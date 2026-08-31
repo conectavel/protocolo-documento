@@ -41,6 +41,7 @@ const ABAS: AbaConfig[] = [
   { chave: 'DESPACHO', rotulo: 'Despacho', somenteInterno: true },
   { chave: 'ATENDIDOS', rotulo: 'Atendidos' },
   { chave: 'PARCIALMENTE', rotulo: 'Parcialmente' },
+  { chave: 'NAO_ATENDIDOS', rotulo: 'Não Atendidos' },
   { chave: 'CANCELADOS', rotulo: 'Cancelados' },
 ];
 

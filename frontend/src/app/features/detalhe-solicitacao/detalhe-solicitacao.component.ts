@@ -20,6 +20,7 @@ import {
   ItemSolicitacao,
   Solicitacao,
   TIPO_ITEM_LABELS,
+  Tramitacao,
 } from '../../core/models';
 import { StatusChipComponent } from '../../shared/components/status-chip/status-chip.component';
 import { LoadingStateComponent } from '../../shared/components/loading-state/loading-state.component';
@@ -85,6 +86,7 @@ export class DetalheSolicitacaoComponent implements OnInit {
 
   readonly carregando = signal(true);
   readonly solicitacao = signal<Solicitacao | null>(null);
+  readonly tramitacoes = signal<Tramitacao[]>([]);
   readonly areasPrograma = signal<AreaPrograma[]>([]);
   readonly erroAcao = signal<string | null>(null);
   readonly executandoAcao = signal(false);
@@ -143,11 +145,27 @@ export class DetalheSolicitacaoComponent implements OnInit {
       next: (solicitacao) => {
         this.solicitacao.set(solicitacao);
         this.carregando.set(false);
+        this.carregarHistorico();
       },
       error: () => {
         this.solicitacao.set(null);
         this.carregando.set(false);
       },
+    });
+  }
+
+  /**
+   * HU01 — Mobilizador nunca vê a tramitação interna; para os demais papéis
+   * o histórico é buscado à parte (o endpoint de detalhe não o inclui).
+   */
+  private carregarHistorico(): void {
+    if (this.papel() === 'MOBILIZADOR') {
+      this.tramitacoes.set([]);
+      return;
+    }
+    this.solicitacoesService.buscarHistorico(this.solicitacaoId).subscribe({
+      next: (tramitacoes) => this.tramitacoes.set(tramitacoes),
+      error: () => this.tramitacoes.set([]),
     });
   }
 
@@ -382,6 +400,7 @@ export class DetalheSolicitacaoComponent implements OnInit {
       next: (solicitacao) => {
         this.solicitacao.set(solicitacao);
         this.executandoAcao.set(false);
+        this.carregarHistorico();
       },
       error: () => {
         this.executandoAcao.set(false);

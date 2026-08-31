@@ -1,0 +1,69 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>swap_horiz</mat-icon>
+    Substitutos
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Defina quem assume as tramitações de outro usuário durante um período (férias, afastamentos etc.).
+  </p>
+</div>
+
+<div class="po-card">
+  <div class="sub-toolbar">
+    <mat-form-field appearance="outline" class="sub-toolbar__busca">
+      <mat-label>Buscar por nome</mat-label>
+      <input matInput [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="button" (click)="abrirNovo()">
+      <mat-icon>add</mat-icon>
+      Adicionar Substituto
+    </button>
+  </div>
+
+  @if (carregando()) {
+    <app-loading-state mensagem="Carregando substitutos…"></app-loading-state>
+  } @else if (substituicoesFiltradas().length === 0) {
+    <app-empty-state mensagem="Nenhuma substituição cadastrada"></app-empty-state>
+  } @else {
+    <div class="po-table-container">
+      <table class="po-table">
+        <thead>
+          <tr>
+            <th>Substituído</th>
+            <th>Substituto</th>
+            <th>Período</th>
+            <th>Escopo</th>
+            <th>Situação</th>
+            <th class="po-table__acoes">Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of substituicoesFiltradas(); track s.id) {
+            <tr>
+              <td>{{ s.usuarioSubstituidoNome }}</td>
+              <td>{{ s.usuarioSubstitutoNome }}</td>
+              <td>{{ s.dataInicio | date: 'dd/MM/yyyy' }} – {{ s.dataFim | date: 'dd/MM/yyyy' }}</td>
+              <td>{{ s.substituirTodosProcessos ? 'Todos os processos' : 'Processos selecionados' }}</td>
+              <td>
+                <span class="po-chip" [class.po-chip--success]="s.vigente" [class.po-chip--neutral]="!s.vigente">
+                  {{ s.vigente ? 'Vigente' : 'Fora do período' }}
+                </span>
+              </td>
+              <td class="po-table__acoes">
+                <button mat-icon-button matTooltip="Editar" (click)="editar(s)">
+                  <mat-icon>edit</mat-icon>
+                </button>
+                <button mat-icon-button matTooltip="Remover" (click)="remover(s)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

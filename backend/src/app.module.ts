@@ -10,6 +10,7 @@ import { FluigIntegrationModule } from './modules/fluig-integration/fluig-integr
 import { SolicitacoesModule } from './modules/solicitacoes/solicitacoes.module';
 import { AnexosModule } from './modules/anexos/anexos.module';
 import { UsuariosModule } from './modules/usuarios/usuarios.module';
+import { PreProtocolosModule } from './modules/pre-protocolos/pre-protocolos.module';
 
 @Module({
   imports: [
@@ -27,6 +28,7 @@ import { UsuariosModule } from './modules/usuarios/usuarios.module';
     AnexosModule,
     SolicitacoesModule,
     UsuariosModule,
+    PreProtocolosModule,
   ],
 })
 export class AppModule {}

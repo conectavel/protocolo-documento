@@ -1,7 +1,7 @@
 import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { ActivatedRoute, Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -51,9 +51,14 @@ export class LoginComponent {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
+  private readonly route = inject(ActivatedRoute);
 
   readonly carregando = signal(false);
-  readonly erro = signal<string | null>(null);
+  readonly erro = signal<string | null>(
+    this.route.snapshot.queryParamMap.get('sessaoExpirada')
+      ? 'Sua sessão expirou. Faça login novamente.'
+      : null,
+  );
   readonly ocultarSenha = signal(true);
 
   /** Modo debug: login rápido por papel, disponível apenas fora de produção. */

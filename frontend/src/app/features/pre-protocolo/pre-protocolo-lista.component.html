@@ -1,0 +1,51 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>mark_email_unread</mat-icon>
+    Pré Protocolo
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Ofícios recebidos por e-mail (superintendencia&#64;senar-go.com.br) aguardando revisão antes de virar protocolo.
+  </p>
+</div>
+
+@if (carregando()) {
+  <app-loading-state mensagem="Carregando pré-protocolos…"></app-loading-state>
+} @else if (pendentes().length === 0) {
+  <app-empty-state mensagem="Nenhum pré-protocolo pendente"></app-empty-state>
+} @else {
+  @for (registro of pendentes(); track registro.id) {
+    <div class="po-card pre-protocolo-card">
+      <div class="pre-protocolo-card__topo">
+        <div>
+          <div class="po-card-section-title">{{ registro.assunto }}</div>
+          <p class="po-hint">
+            De: <strong>{{ registro.remetente }}</strong> · Recebido em
+            {{ registro.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}
+          </p>
+        </div>
+        <div class="pre-protocolo-card__acoes">
+          <button mat-stroked-button color="warn" type="button" (click)="descartar(registro)">
+            <mat-icon>delete_outline</mat-icon>
+            Descartar
+          </button>
+          <button mat-flat-button color="primary" type="button" (click)="converter(registro)">
+            <mat-icon>arrow_forward</mat-icon>
+            Converter em Protocolo
+          </button>
+        </div>
+      </div>
+      <div class="po-divider-gradient"></div>
+
+      @if (registro.corpo) {
+        <p class="pre-protocolo-card__corpo">{{ registro.corpo }}</p>
+      }
+
+      @if (registro.anexoOficioId) {
+        <app-pdf-viewer [anexoId]="registro.anexoOficioId" nomeArquivo="oficio.pdf" altura="320px"></app-pdf-viewer>
+      } @else {
+        <p class="po-hint po-hint--erro">Este e-mail não trouxe um PDF anexado.</p>
+      }
+    </div>
+  }
+}

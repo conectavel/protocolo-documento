@@ -65,6 +65,41 @@ export const routes: Routes = [
           ),
         title: 'Configurações',
       },
+      {
+        path: 'pre-protocolo',
+        canActivate: [roleGuard(['ASSESSOR', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/pre-protocolo/pre-protocolo-lista.component').then(
+            (m) => m.PreProtocoloListaComponent
+          ),
+        title: 'Pré Protocolo',
+      },
+      {
+        path: 'pre-protocolo/:id/converter',
+        canActivate: [roleGuard(['ASSESSOR', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/pre-protocolo/converter-pre-protocolo.component').then(
+            (m) => m.ConverterPreProtocoloComponent
+          ),
+        title: 'Converter Pré Protocolo',
+      },
+      {
+        path: 'substitutos',
+        canActivate: [
+          roleGuard([
+            'COORDENADOR_REGIONAL',
+            'ASSESSOR',
+            'SUPERINTENDENTE',
+            'DIRETOR_EDUCACIONAL',
+            'GESTOR',
+            'COORDENADOR',
+            'ADMIN',
+          ]),
+        ],
+        loadComponent: () =>
+          import('./features/substitutos/substitutos.component').then((m) => m.SubstitutosComponent),
+        title: 'Substitutos',
+      },
     ],
   },
   { path: '**', redirectTo: 'painel' },

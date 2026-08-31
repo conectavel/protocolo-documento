@@ -1,0 +1,14 @@
+.sub-toolbar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  &__busca {
+    flex: 1;
+    min-width: 240px;
+    max-width: 360px;
+  }
+}

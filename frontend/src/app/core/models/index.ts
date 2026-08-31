@@ -6,3 +6,5 @@ export * from './solicitacao.model';
 export * from './pagina.model';
 export * from './metricas.model';
 export * from './preferencia-notificacao.model';
+export * from './substituicao.model';
+export * from './pre-protocolo.model';

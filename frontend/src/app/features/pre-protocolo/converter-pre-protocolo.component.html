@@ -1,0 +1,224 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>fact_check</mat-icon>
+    Converter Pré Protocolo
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Confirme o Parceiro/Mobilizador e detalhe os itens a partir do e-mail recebido.
+  </p>
+</div>
+
+@if (carregando()) {
+  <app-loading-state mensagem="Carregando pré-protocolo…"></app-loading-state>
+} @else if (!preProtocolo()) {
+  <p class="po-hint po-hint--erro">Pré-protocolo não encontrado.</p>
+} @else {
+  <div class="po-card">
+    <div class="po-card-section-title">E-mail original</div>
+    <div class="po-divider-gradient"></div>
+    <p class="po-hint">
+      De: <strong>{{ preProtocolo()?.remetente }}</strong> · Recebido em
+      {{ preProtocolo()?.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}
+    </p>
+    @if (preProtocolo()?.anexoOficioId) {
+      <app-pdf-viewer
+        [anexoId]="preProtocolo()!.anexoOficioId!"
+        nomeArquivo="oficio.pdf"
+        altura="320px"
+      ></app-pdf-viewer>
+    }
+  </div>
+
+  <div class="po-card">
+    <div class="po-card-section-title">Identificação do Solicitante</div>
+    <div class="po-divider-gradient"></div>
+
+    <form [formGroup]="documentoForm" class="po-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Parceiro</mat-label>
+        <mat-select formControlName="parceiroId">
+          @for (parceiro of parceiros(); track parceiro.id) {
+            <mat-option [value]="parceiro.id">{{ parceiro.nome }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Mobilizador</mat-label>
+        <input matInput [value]="parceiroSelecionado?.mobilizadorNome || '—'" readonly />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Presidente</mat-label>
+        <input matInput [value]="parceiroSelecionado?.presidenteNome || '—'" readonly />
+      </mat-form-field>
+    </form>
+  </div>
+
+  <div class="po-card">
+    <div class="po-card-section-title">Dados do Documento</div>
+    <div class="po-divider-gradient"></div>
+
+    <form [formGroup]="documentoForm" class="po-grid">
+      <mat-form-field appearance="outline" class="po-field-full">
+        <mat-label>Assunto</mat-label>
+        <input matInput formControlName="assunto" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Nº do Documento</mat-label>
+        <input matInput formControlName="numeroDocumento" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Município</mat-label>
+        <input matInput formControlName="municipio" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data do Documento</mat-label>
+        <input matInput [matDatepicker]="pickerDoc" formControlName="dataDocumento" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
+        <mat-datepicker #pickerDoc></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="po-field-full">
+        <mat-label>Resumo / Observações</mat-label>
+        <textarea matInput rows="3" formControlName="resumoObservacoes"></textarea>
+      </mat-form-field>
+    </form>
+  </div>
+
+  <div class="po-card">
+    <div class="po-card-section-title">Tipo de Solicitação</div>
+    <div class="po-divider-gradient"></div>
+
+    <form [formGroup]="itemForm" class="po-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="tipo">
+          @for (tipo of tiposItem; track tipo) {
+            <mat-option [value]="tipo">{{ tipoItemLabels[tipo] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+
+      @if (tipoAtualTemTitulo) {
+        <mat-form-field appearance="outline">
+          <mat-label>Título</mat-label>
+          <input matInput formControlName="titulo" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data início</mat-label>
+          <input matInput [matDatepicker]="pInicio" formControlName="dataInicio" />
+          <mat-datepicker-toggle matIconSuffix [for]="pInicio"></mat-datepicker-toggle>
+          <mat-datepicker #pInicio></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data fim</mat-label>
+          <input matInput [matDatepicker]="pFim" formControlName="dataFim" />
+          <mat-datepicker-toggle matIconSuffix [for]="pFim"></mat-datepicker-toggle>
+          <mat-datepicker #pFim></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline" class="po-field-full">
+          <mat-label>Resumo</mat-label>
+          <textarea matInput rows="3" formControlName="resumo"></textarea>
+        </mat-form-field>
+      } @else {
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo do Evento</mat-label>
+          <mat-select formControlName="tipoEvento">
+            @for (grupo of categoriasTipoEvento; track grupo.categoria) {
+              <mat-option [value]="grupo.categoria">{{ grupo.categoria }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Ação/Atividade</mat-label>
+          <input
+            matInput
+            formControlName="acaoAtividade"
+            [matAutocomplete]="autoAA"
+            [disabled]="!itemForm.controls.tipoEvento.value"
+            placeholder="Selecione o Tipo do Evento primeiro"
+          />
+          <mat-autocomplete #autoAA="matAutocomplete">
+            @for (opcao of opcoesAcaoAtividade; track opcao) {
+              <mat-option [value]="opcao">{{ opcao }}</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Turno</mat-label>
+          <mat-select formControlName="turno">
+            @for (turno of turnos; track turno) {
+              <mat-option [value]="turno">{{ turnoLabels[turno] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data início</mat-label>
+          <input matInput [matDatepicker]="pInicio2" formControlName="dataInicio" />
+          <mat-datepicker-toggle matIconSuffix [for]="pInicio2"></mat-datepicker-toggle>
+          <mat-datepicker #pInicio2></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data fim</mat-label>
+          <input matInput [matDatepicker]="pFim2" formControlName="dataFim" />
+          <mat-datepicker-toggle matIconSuffix [for]="pFim2"></mat-datepicker-toggle>
+          <mat-datepicker #pFim2></mat-datepicker>
+        </mat-form-field>
+      }
+    </form>
+
+    @if (erroItem()) {
+      <p class="po-hint po-hint--erro">{{ erroItem() }}</p>
+    }
+
+    <div class="po-add-item-row">
+      <button mat-flat-button color="primary" type="button" (click)="adicionarItem()">
+        <mat-icon>add</mat-icon>
+        Adicionar item
+      </button>
+    </div>
+
+    <div class="po-itens-lista">
+      @if (itens().length === 0) {
+        <p class="po-hint">Nenhum item adicionado ainda.</p>
+      }
+      @for (item of itens(); track $index) {
+        <div class="po-nested-block">
+          <div class="po-nested-block__cabecalho">
+            <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
+            <span class="po-nested-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
+          </div>
+          @if (item.resumo) {
+            <p class="po-nested-block__linha">{{ item.resumo }}</p>
+          }
+          <button
+            mat-stroked-button
+            color="warn"
+            type="button"
+            class="po-nested-block__remover"
+            (click)="removerItem($index)"
+          >
+            <mat-icon>delete</mat-icon>
+            Remover
+          </button>
+        </div>
+      }
+    </div>
+  </div>
+
+  @if (erroEnvio()) {
+    <p class="po-hint po-hint--erro po-mt-16">{{ erroEnvio() }}</p>
+  }
+
+  <div class="po-form-footer">
+    <button mat-flat-button color="warn" type="button" [disabled]="enviando()" (click)="cancelar()">
+      Cancelar
+    </button>
+    <button mat-flat-button color="primary" type="button" [disabled]="enviando()" (click)="converter()">
+      @if (enviando()) {
+        <mat-spinner diameter="24" color="accent"></mat-spinner>
+      } @else {
+        <span>Gerar Protocolo</span>
+      }
+    </button>
+  </div>
+}

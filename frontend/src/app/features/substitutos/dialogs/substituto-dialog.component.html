@@ -1,0 +1,61 @@
+<div class="sub-dialog">
+  <div class="sub-dialog__header">
+    <h2>{{ data.substituicao ? 'Editar Substituto' : 'Adicionar Substituto' }}</h2>
+    <button mat-icon-button (click)="fechar()" aria-label="Fechar">
+      <mat-icon>close</mat-icon>
+    </button>
+  </div>
+
+  <form [formGroup]="formulario" class="sub-dialog__grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Usuário que será substituído</mat-label>
+      <mat-select formControlName="usuarioSubstituidoId">
+        @for (usuario of data.usuarios; track usuario.id) {
+          <mat-option [value]="usuario.id">{{ usuario.nome }} — {{ papelLabels[usuario.papel] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Usuário que irá substituir</mat-label>
+      <mat-select formControlName="usuarioSubstitutoId">
+        @for (usuario of data.usuarios; track usuario.id) {
+          <mat-option [value]="usuario.id">{{ usuario.nome }} — {{ papelLabels[usuario.papel] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Data início</mat-label>
+      <input matInput [matDatepicker]="pickerInicio" formControlName="dataInicio" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+      <mat-datepicker #pickerInicio></mat-datepicker>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Data fim</mat-label>
+      <input matInput [matDatepicker]="pickerFim" formControlName="dataFim" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerFim"></mat-datepicker-toggle>
+      <mat-datepicker #pickerFim></mat-datepicker>
+    </mat-form-field>
+
+    <div class="sub-dialog__toggle">
+      <span>Substituir todos os processos</span>
+      <mat-slide-toggle formControlName="substituirTodosProcessos"></mat-slide-toggle>
+    </div>
+
+    <mat-form-field appearance="outline" class="sub-dialog__full">
+      <mat-label>Justificativa</mat-label>
+      <textarea matInput rows="3" formControlName="justificativa"></textarea>
+    </mat-form-field>
+  </form>
+
+  @if (erro()) {
+    <p class="po-hint po-hint--erro">{{ erro() }}</p>
+  }
+
+  <div class="sub-dialog__acoes">
+    <button mat-stroked-button type="button" (click)="fechar()">Fechar</button>
+    <button mat-flat-button color="primary" type="button" (click)="salvar()">Salvar</button>
+  </div>
+</div>

@@ -21,13 +21,12 @@
   }
 
   &__logo {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    color: #ffffff;
     background: rgba(255, 255, 255, 0.1);
     margin-bottom: 28px;
     transition: background-color 0.2s ease, transform 0.2s ease;
@@ -37,11 +36,9 @@
       transform: scale(1.05);
     }
 
-    mat-icon {
-      font-size: 24px;
-      width: 24px;
-      height: 24px;
-      color: var(--sidebar-icon-active);
+    img {
+      width: 26px;
+      height: 26px;
     }
   }
 

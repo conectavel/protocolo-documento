@@ -156,15 +156,26 @@
     } @else {
       <mat-form-field appearance="outline">
         <mat-label>Tipo do Evento</mat-label>
-        <input matInput formControlName="tipoEvento" />
+        <mat-select formControlName="tipoEvento">
+          @for (grupo of categoriasTipoEvento; track grupo.categoria) {
+            <mat-option [value]="grupo.categoria">{{ grupo.categoria }}</mat-option>
+          }
+        </mat-select>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Ação/Atividade</mat-label>
-        <input matInput formControlName="acaoAtividade" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Disciplina</mat-label>
-        <input matInput formControlName="disciplina" />
+        <input
+          matInput
+          formControlName="acaoAtividade"
+          [matAutocomplete]="autoAcaoAtividade"
+          [disabled]="!itemForm.controls.tipoEvento.value"
+          placeholder="Selecione o Tipo do Evento primeiro"
+        />
+        <mat-autocomplete #autoAcaoAtividade="matAutocomplete">
+          @for (opcao of opcoesAcaoAtividade; track opcao) {
+            <mat-option [value]="opcao">{{ opcao }}</mat-option>
+          }
+        </mat-autocomplete>
       </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Turno</mat-label>

@@ -90,12 +90,6 @@ export interface Solicitacao {
 
   itens: ItemSolicitacao[];
 
-  /**
-   * Ausente para o Mobilizador (HU01). Presente para papéis internos
-   * na resposta de GET /api/solicitacoes/:id/historico.
-   */
-  tramitacoes?: Tramitacao[];
-
   criadoEm: string;
   criadoPor?: string;
   alteradoEm?: string;

@@ -51,6 +51,12 @@
   display: flex;
   justify-content: flex-end;
   margin-top: 16px;
+
+  button {
+    height: 44px;
+    padding: 0 20px;
+    font-size: 14px;
+  }
 }
 
 .po-itens-lista {

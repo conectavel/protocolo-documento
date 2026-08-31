@@ -7,6 +7,7 @@ import { MatDatepickerModule } from '@angular/material/datepicker';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
+import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
 
@@ -16,6 +17,9 @@ import { ParceirosService } from '../../core/services/parceiros.service';
 import { SolicitacoesService } from '../../core/services/solicitacoes.service';
 import { ItemSolicitacao, Parceiro, TIPO_ITEM_LABELS, TipoItem } from '../../core/models';
 import { PdfViewerComponent } from '../../shared/components/pdf-viewer/pdf-viewer.component';
+import { CATALOGO_TIPOS_EVENTO } from '../../core/catalogos/catalogo-tipos-evento';
+
+const LIMITE_OPCOES_AUTOCOMPLETE = 60;
 
 const TIPOS_COM_TITULO: TipoItem[] = ['PATROCINIO', 'SOLICITACAO_ITENS', 'CONVITE'];
 
@@ -33,6 +37,7 @@ const TIPOS_COM_TITULO: TipoItem[] = ['PATROCINIO', 'SOLICITACAO_ITENS', 'CONVIT
   imports: [
     CommonModule,
     ReactiveFormsModule,
+    MatAutocompleteModule,
     MatButtonModule,
     MatDatepickerModule,
     MatFormFieldModule,
@@ -63,6 +68,13 @@ export class ProtocolarOficioComponent implements OnInit {
     NOITE: 'Noite',
     INTEGRAL: 'Integral',
   };
+
+  /**
+   * Catálogo de Tipo do Evento / Ação-Atividade (SENAR-GO). "Disciplina" não tem uma
+   * fonte de dados equivalente ainda e fica oculta nesta tela (protocolo inicial do
+   * Mobilizador) — ver documentacao/specs — evitando expor um campo livre sem apoio.
+   */
+  readonly categoriasTipoEvento = CATALOGO_TIPOS_EVENTO;
 
   readonly carregandoParceiro = signal(true);
   readonly parceiro = signal<Parceiro | null>(null);
@@ -100,10 +112,26 @@ export class ProtocolarOficioComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregarParceiroDoMobilizador();
+
+    // Trocar a categoria (Tipo do Evento) invalida a Ação/Atividade escolhida antes.
+    this.itemForm.controls.tipoEvento.valueChanges.subscribe(() => {
+      this.itemForm.controls.acaoAtividade.setValue('');
+    });
   }
 
   get tipoAtualTemTitulo(): boolean {
     return TIPOS_COM_TITULO.includes(this.itemForm.controls.tipo.value);
+  }
+
+  /** Opções de Ação/Atividade da categoria selecionada, filtradas pelo texto digitado. */
+  get opcoesAcaoAtividade(): string[] {
+    const categoria = this.itemForm.controls.tipoEvento.value;
+    const grupo = this.categoriasTipoEvento.find((c) => c.categoria === categoria);
+    if (!grupo) return [];
+
+    const filtro = (this.itemForm.controls.acaoAtividade.value || '').trim().toLowerCase();
+    const itens = filtro ? grupo.itens.filter((i) => i.toLowerCase().includes(filtro)) : grupo.itens;
+    return itens.slice(0, LIMITE_OPCOES_AUTOCOMPLETE);
   }
 
   private carregarParceiroDoMobilizador(): void {

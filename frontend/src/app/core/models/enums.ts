@@ -119,14 +119,16 @@ export function chipTomStatusItem(status: StatusItem): 'success' | 'warning' | '
 
 /**
  * Agrupamento do painel (requirements.md §6 / design.md §4):
- * abas "Iniciados / Despacho / Atendidos / Parcialmente / Cancelados".
+ * abas "Iniciados / Despacho / Atendidos / Parcialmente / Não Atendidos / Cancelados".
  * A aba "Despacho" só é exibida a papéis internos (nunca ao Mobilizador — HU01).
- *
- * NAO_ATENDIDO é agrupado em "Cancelados" para caber nas 4 abas que o
- * Mobilizador enxerga (Iniciados / Atendidos / Parcialmente / Cancelados),
- * já que a spec de negócio não previu uma 5ª aba para ele.
  */
-export type AbaPainel = 'INICIADOS' | 'DESPACHO' | 'ATENDIDOS' | 'PARCIALMENTE' | 'CANCELADOS';
+export type AbaPainel =
+  | 'INICIADOS'
+  | 'DESPACHO'
+  | 'ATENDIDOS'
+  | 'PARCIALMENTE'
+  | 'NAO_ATENDIDOS'
+  | 'CANCELADOS';
 
 export function abaDoStatusMacro(status: StatusMacro): AbaPainel {
   switch (status) {
@@ -136,8 +138,9 @@ export function abaDoStatusMacro(status: StatusMacro): AbaPainel {
       return 'ATENDIDOS';
     case 'PARCIALMENTE_ATENDIDO':
       return 'PARCIALMENTE';
-    case 'CANCELADO':
     case 'NAO_ATENDIDO':
+      return 'NAO_ATENDIDOS';
+    case 'CANCELADO':
       return 'CANCELADOS';
     default:
       return 'INICIADOS';

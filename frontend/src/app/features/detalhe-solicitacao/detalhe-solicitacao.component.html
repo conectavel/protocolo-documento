@@ -296,13 +296,13 @@
       </div>
     }
 
-    <!-- Histórico (apenas papéis internos — HU01) -->
-    @if (sol.tramitacoes && sol.tramitacoes.length > 0) {
+    <!-- Histórico (apenas papéis internos — HU01, o Mobilizador nunca vê a tramitação interna) -->
+    @if (!ehMobilizador() && tramitacoes().length > 0) {
       <div class="po-card">
         <div class="po-card-section-title">Histórico de Tramitação</div>
         <div class="po-divider-gradient"></div>
 
-        @for (tramitacao of sol.tramitacoes; track tramitacao.id) {
+        @for (tramitacao of tramitacoes(); track tramitacao.id) {
           <div class="po-historico-item">
             <mat-icon>schedule</mat-icon>
             <div>

@@ -1,6 +1,6 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Brackets, Repository } from 'typeorm';
 import { Solicitacao } from './entities/solicitacao.entity';
 import { ItemSolicitacao } from './entities/item-solicitacao.entity';
 import { Tramitacao } from './entities/tramitacao.entity';
@@ -444,40 +444,66 @@ export class SolicitacoesService {
     return item;
   }
 
+  /**
+   * Identidades efetivas do usuário para fins de RBAC: a própria mais, quando aplicável,
+   * uma substituição vigente (ver SubstituicoesService) — o substituto herda os direitos
+   * do substituído sem perder os próprios, pelo período da substituição.
+   */
+  private identidadesEfetivas(usuario: UsuarioAutenticado) {
+    return [
+      { papel: usuario.papel, areaProgramaId: usuario.areaProgramaId, parceiroId: usuario.parceiroId, coordenadorRegionalId: usuario.coordenadorRegionalId },
+      ...(usuario.substituindo ?? []),
+    ];
+  }
+
   private exigirPapel(usuario: UsuarioAutenticado, permitidos: Papel[]): void {
-    if (!permitidos.includes(usuario.papel)) {
+    const temPermissao = this.identidadesEfetivas(usuario).some((id) => permitidos.includes(id.papel));
+    if (!temPermissao) {
       throw new ForbiddenException(`Papel "${usuario.papel}" não pode executar esta ação.`);
     }
   }
 
   private exigirMesmaArea(usuario: UsuarioAutenticado, areaProgramaId?: string): void {
-    if (usuario.papel !== Papel.ADMIN && usuario.areaProgramaId !== areaProgramaId) {
+    if (usuario.papel === Papel.ADMIN) return;
+    const temAcesso = this.identidadesEfetivas(usuario).some((id) => id.areaProgramaId === areaProgramaId);
+    if (!temAcesso) {
       throw new ForbiddenException('Este item pertence a outra Área/Programa.');
     }
   }
 
   /** RBAC de leitura: cada papel só vê o subconjunto de solicitações pertinente. */
   private aplicarEscopoPorPapel(qb: ReturnType<Repository<Solicitacao>['createQueryBuilder']>, usuario: UsuarioAutenticado) {
-    switch (usuario.papel) {
-      case Papel.MOBILIZADOR:
-        qb.andWhere('s.parceiroId = :parceiroId', { parceiroId: usuario.parceiroId });
-        break;
-      case Papel.COORDENADOR_REGIONAL:
-        qb.andWhere('parceiro.coordenadorRegionalId = :coordenadorRegionalId', {
-          coordenadorRegionalId: usuario.coordenadorRegionalId,
-        });
-        break;
-      case Papel.GESTOR:
-      case Papel.COORDENADOR:
-        qb.andWhere('itens.areaProgramaId = :areaProgramaId', { areaProgramaId: usuario.areaProgramaId });
-        break;
-      // Assessor, Superintendente, Diretor Educacional e Admin têm visão ampla (toda a organização).
+    const identidades = this.identidadesEfetivas(usuario);
+
+    if (identidades.some((id) => [Papel.ASSESSOR, Papel.SUPERINTENDENTE, Papel.DIRETOR_EDUCACIONAL, Papel.ADMIN].includes(id.papel))) {
+      return qb; // visão ampla (toda a organização) por qualquer identidade efetiva
     }
+
+    qb.andWhere(
+      new Brackets((sub) => {
+        identidades.forEach((id, indice) => {
+          if (id.papel === Papel.MOBILIZADOR) {
+            sub.orWhere(`s.parceiroId = :parceiroId${indice}`, { [`parceiroId${indice}`]: id.parceiroId });
+          } else if (id.papel === Papel.COORDENADOR_REGIONAL) {
+            sub.orWhere(`parceiro.coordenadorRegionalId = :coordenadorRegionalId${indice}`, {
+              [`coordenadorRegionalId${indice}`]: id.coordenadorRegionalId,
+            });
+          } else if (id.papel === Papel.GESTOR || id.papel === Papel.COORDENADOR) {
+            sub.orWhere(`itens.areaProgramaId = :areaProgramaId${indice}`, {
+              [`areaProgramaId${indice}`]: id.areaProgramaId,
+            });
+          }
+        });
+      }),
+    );
     return qb;
   }
 
   private assertAcesso(solicitacao: Solicitacao, usuario: UsuarioAutenticado): void {
-    if (usuario.papel === Papel.MOBILIZADOR && solicitacao.parceiroId !== usuario.parceiroId) {
+    const permitido = this.identidadesEfetivas(usuario).some(
+      (id) => id.papel !== Papel.MOBILIZADOR || solicitacao.parceiroId === id.parceiroId,
+    );
+    if (!permitido) {
       throw new ForbiddenException('Solicitação não pertence ao seu Parceiro.');
     }
   }

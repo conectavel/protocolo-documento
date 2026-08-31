@@ -1,0 +1,25 @@
+.pre-protocolo-card {
+  &__topo {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  &__acoes {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  &__corpo {
+    font-size: 14px;
+    color: var(--color-text-secondary);
+    background: var(--color-bg-page);
+    border-radius: var(--radius-sm);
+    padding: 12px 14px;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+  }
+}

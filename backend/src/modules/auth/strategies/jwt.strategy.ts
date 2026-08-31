@@ -3,8 +3,10 @@ import { PassportStrategy } from '@nestjs/passport';
 import { ConfigService } from '@nestjs/config';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { AuthService } from '../auth.service';
-import { UsuarioAutenticado } from '../../../common/guards/jwt-auth.guard';
+import { IdentidadeSubstituida, UsuarioAutenticado } from '../../../common/guards/jwt-auth.guard';
 import { ParceirosService } from '../../parceiros/parceiros.service';
+import { SubstituicoesService } from '../../usuarios/substituicoes.service';
+import { Papel } from '../../../common/enums/papel.enum';
 
 interface JwtPayload {
   sub: string;
@@ -19,6 +21,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     configService: ConfigService,
     private readonly authService: AuthService,
     private readonly parceirosService: ParceirosService,
+    private readonly substituicoesService: SubstituicoesService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
@@ -41,23 +44,45 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       areaProgramaId: usuario.areaProgramaId ?? undefined,
     };
 
-    // Resolve o contexto de hierarquia (parceiroId / coordenadorRegionalId) a partir do vínculo RM,
-    // garantindo que o RBAC use sempre o dado mais atual sincronizado do RM/ACORP.
-    if (payload.rmCodigoReferencia) {
-      if (usuario.papel === 'MOBILIZADOR') {
-        const mobilizador = await this.parceirosService.buscarMobilizadorPorRmCodigo(
-          payload.rmCodigoReferencia,
-        );
-        usuarioAutenticado.parceiroId = mobilizador?.parceiroId;
-      }
-      if (usuario.papel === 'COORDENADOR_REGIONAL') {
-        const coordenador = await this.parceirosService.buscarCoordenadorRegionalPorRmCodigo(
-          payload.rmCodigoReferencia,
-        );
-        usuarioAutenticado.coordenadorRegionalId = coordenador?.id;
+    await this.resolverContextoRm(usuarioAutenticado, usuario.papel, payload.rmCodigoReferencia);
+
+    // Substituição vigente (equivalente ao "Substitutos" do Fluig): o substituto passa a
+    // ter, em adição aos próprios, os direitos do substituído durante o período — ver
+    // requirements.md e SubstituicoesService.buscarSubstituicaoAtivaComoSubstituto.
+    const substituicaoAtiva = await this.substituicoesService.buscarSubstituicaoAtivaComoSubstituto(usuario.id);
+    if (substituicaoAtiva) {
+      const substituido = await this.authService.validarUsuarioPorId(substituicaoAtiva.usuarioSubstituidoId);
+      if (substituido) {
+        const identidade: IdentidadeSubstituida = {
+          usuarioId: substituido.id,
+          nome: substituido.nome,
+          papel: substituido.papel,
+          areaProgramaId: substituido.areaProgramaId ?? undefined,
+        };
+        await this.resolverContextoRm(identidade, substituido.papel, substituido.rmCodigoReferencia);
+        usuarioAutenticado.substituindo = [identidade];
       }
     }
 
     return usuarioAutenticado;
+  }
+
+  /** Resolve parceiroId/coordenadorRegionalId a partir do vínculo RM — usado tanto para o
+   * usuário logado quanto para uma identidade substituída. */
+  private async resolverContextoRm(
+    alvo: { parceiroId?: string; coordenadorRegionalId?: string },
+    papel: Papel,
+    rmCodigoReferencia?: string,
+  ): Promise<void> {
+    if (!rmCodigoReferencia) return;
+
+    if (papel === Papel.MOBILIZADOR) {
+      const mobilizador = await this.parceirosService.buscarMobilizadorPorRmCodigo(rmCodigoReferencia);
+      alvo.parceiroId = mobilizador?.parceiroId;
+    }
+    if (papel === Papel.COORDENADOR_REGIONAL) {
+      const coordenador = await this.parceirosService.buscarCoordenadorRegionalPorRmCodigo(rmCodigoReferencia);
+      alvo.coordenadorRegionalId = coordenador?.id;
+    }
   }
 }

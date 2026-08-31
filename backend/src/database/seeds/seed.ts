@@ -15,6 +15,7 @@ import { Solicitacao } from '../../modules/solicitacoes/entities/solicitacao.ent
 import { ItemSolicitacao } from '../../modules/solicitacoes/entities/item-solicitacao.entity';
 import { Tramitacao } from '../../modules/solicitacoes/entities/tramitacao.entity';
 import { Devolutiva } from '../../modules/devolutivas/entities/devolutiva.entity';
+import { PreProtocolo } from '../../modules/pre-protocolos/entities/pre-protocolo.entity';
 import { Papel } from '../../common/enums/papel.enum';
 import {
   AcaoTramitacao,
@@ -58,6 +59,7 @@ async function seed() {
       ItemSolicitacao,
       Tramitacao,
       Devolutiva,
+      PreProtocolo,
     ],
     synchronize: true,
   });
@@ -69,6 +71,7 @@ async function seed() {
   await dataSource.query(
     `TRUNCATE TABLE
       tramitacoes, devolutivas, itens_solicitacao, solicitacoes, anexos,
+      pre_protocolos, substituicoes_usuario, preferencias_notificacao,
       usuarios, areas_programa, parceiros, mobilizadores, presidentes,
       coordenadores_regionais, sincronizacoes_rm
     RESTART IDENTITY CASCADE`,
@@ -545,6 +548,26 @@ async function seed() {
       usuario: claudimeire,
       criadoEm: dataDevolutiva,
     });
+  }
+
+  // ---------------------------------------------------------------------
+  // Pré Protocolo de exemplo — solicitação recebida por e-mail em
+  // superintendencia@senar-go.com.br, aguardando revisão do Assessor.
+  // ---------------------------------------------------------------------
+  {
+    const preProtocoloRepo = dataSource.getRepository(PreProtocolo);
+    const anexo = await criarAnexoOficio('oficio-recebido-por-email.pdf');
+    await preProtocoloRepo.save(
+      preProtocoloRepo.create({
+        remetente: 'presidencia@faeg.com.br',
+        assunto: 'Solicitação de curso de Bovinocultura de Corte — Regional Sudoeste',
+        corpo:
+          'Prezados, encaminho em anexo o ofício solicitando a realização de curso de ' +
+          'Bovinocultura de Corte para produtores da nossa regional. Aguardamos retorno.',
+        anexoOficioId: anexo.id,
+        status: 'PENDENTE',
+      }),
+    );
   }
 
   // eslint-disable-next-line no-console

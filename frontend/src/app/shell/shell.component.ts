@@ -6,7 +6,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../core/services/auth.service';
-import { PAPEL_LABELS } from '../core/models';
+import { PAPEL_LABELS, Papel } from '../core/models';
 
 interface ItemNavegacao {
   rota: string;
@@ -14,6 +14,7 @@ interface ItemNavegacao {
   rotulo: string;
   somenteMobilizador?: boolean;
   ocultoParaMobilizador?: boolean;
+  somentePapeis?: Papel[];
 }
 
 /**
@@ -84,6 +85,18 @@ export class ShellComponent {
       rotulo: 'Dashboard',
       ocultoParaMobilizador: true,
     },
+    {
+      rota: '/substitutos',
+      icone: 'swap_horiz',
+      rotulo: 'Substitutos',
+      ocultoParaMobilizador: true,
+    },
+    {
+      rota: '/pre-protocolo',
+      icone: 'mark_email_unread',
+      rotulo: 'Pré Protocolo',
+      somentePapeis: ['ASSESSOR', 'ADMIN'],
+    },
     { rota: '/configuracoes', icone: 'settings', rotulo: 'Configurações' },
   ];
 
@@ -92,7 +105,8 @@ export class ShellComponent {
     const ehMobilizador = papel === 'MOBILIZADOR';
     return this.itensNavegacao.filter((item) => {
       if (item.somenteMobilizador) return ehMobilizador;
-      if (item.ocultoParaMobilizador) return !ehMobilizador;
+      if (item.ocultoParaMobilizador && ehMobilizador) return false;
+      if (item.somentePapeis) return !!papel && item.somentePapeis.includes(papel);
       return true;
     });
   });
