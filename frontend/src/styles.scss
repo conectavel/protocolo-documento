@@ -17,6 +17,33 @@
   box-sizing: border-box;
 }
 
+// -------------------------------------------------------------
+// Altura e arredondamento consistentes entre botões e campos de
+// formulário (outline) — para os dois ficarem alinhados visualmente
+// quando aparecem lado a lado (ex.: busca + botão de ação).
+// -------------------------------------------------------------
+.mat-mdc-unelevated-button,
+.mat-mdc-raised-button,
+.mat-mdc-outlined-button,
+.mat-mdc-button {
+  height: 44px;
+  border-radius: var(--radius-sm);
+}
+
+.mat-mdc-form-field {
+  .mdc-notched-outline__leading {
+    border-radius: var(--radius-sm) 0 0 var(--radius-sm);
+  }
+
+  .mdc-notched-outline__trailing {
+    border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  }
+
+  &:not(.po-search-field) .mat-mdc-text-field-wrapper {
+    height: 44px;
+  }
+}
+
 // Comportamento mais suave: a troca de tema (claro/escuro) faz um fade de cor nas
 // principais superfícies em vez de trocar instantaneamente. Escopado a um conjunto
 // de seletores (não `*`) para não pesar listas grandes/tabelas com muitas linhas.
@@ -112,6 +139,16 @@ a {
       width: 28px;
       height: 28px;
     }
+
+    @media (max-width: 600px) {
+      font-size: 22px;
+
+      .mat-icon {
+        font-size: 22px;
+        width: 22px;
+        height: 22px;
+      }
+    }
   }
 
   .po-page-subtitle {
@@ -154,9 +191,8 @@ a {
 }
 
 .po-divider-gradient {
-  height: 2px;
-  border-radius: var(--radius-pill);
-  background: linear-gradient(to right, var(--color-accent), transparent);
+  height: 1px;
+  background: var(--color-border);
   margin: 12px 0 20px;
 }
 
@@ -279,6 +315,10 @@ a {
   button {
     width: 100%;
     height: 44px;
+  }
+
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -411,13 +451,90 @@ a {
   align-items: center;
   gap: 16px;
   margin-bottom: var(--section-gap);
+  flex-wrap: wrap;
+}
+
+// Campo + botão "fundidos" em um único controle: o campo perde o
+// arredondamento/borda do lado direito e o botão perde do lado esquerdo,
+// ficando encostados como se o botão estivesse dentro do campo de busca.
+// A altura do campo é a natural do Material (não forçamos um px fixo — isso
+// desalinhava a borda visível, que é desenhada por elementos internos
+// separados do wrapper); o botão acompanha essa altura via `align-items:
+// stretch` em vez de ter uma altura própria, então os dois ficam sempre do
+// mesmo tamanho não importa a densidade/tema do Material.
+.po-search-combo {
+  display: flex;
+  align-items: stretch;
+  flex: 1;
+  min-width: 260px;
+
+  // Raio fixo (não var(--radius-pill), que é 9999px): um valor "infinito" é
+  // sempre recalculado como metade da altura de CADA elemento de forma
+  // independente, então qualquer diferença de 1px entre a altura real do
+  // wrapper e a do contorno (.mdc-notched-outline, peça interna separada do
+  // Material) já basta para a curva de um não coincidir com a do outro —
+  // é exatamente essa a "emenda" visível no canto. Um raio concreto e
+  // moderado não bate nesse extremo, então pequenas diferenças de altura
+  // deixam de aparecer.
+  --po-search-radius: 21px;
 
   .po-search-field {
     flex: 1;
 
     .mat-mdc-text-field-wrapper {
-      border-radius: var(--radius-pill);
+      border-radius: var(--po-search-radius) 0 0 var(--po-search-radius);
+      background-color: var(--color-surface);
     }
+
+    .mdc-notched-outline__leading {
+      border-radius: var(--po-search-radius) 0 0 var(--po-search-radius);
+    }
+
+    .mdc-notched-outline__trailing {
+      border-right: none;
+      border-radius: 0;
+    }
+  }
+
+  &__botao {
+    height: auto !important; // sobrescreve a altura fixa global — aqui vem do stretch
+    align-self: stretch;
+    flex-shrink: 0;
+    border-radius: 0 var(--po-search-radius) var(--po-search-radius) 0 !important;
+
+    .mat-icon {
+      margin-right: 4px;
+    }
+  }
+}
+
+// Ação principal da tela para o Mobilizador — maior e mais destacada que os
+// demais botões (é a ação mais importante da tela), com um pulso contínuo
+// no contorno + leve respiração de escala para chamar atenção.
+.po-search-row__botao-protocolar {
+  height: 52px !important;
+  padding: 0 26px !important;
+  border-radius: var(--radius-pill) !important;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  box-shadow: 0 6px 18px rgba(22, 163, 74, 0.4);
+  animation: po-pulse-destaque 2.2s ease-in-out infinite;
+
+  .mat-icon {
+    font-size: 22px;
+    width: 22px;
+    height: 22px;
+  }
+}
+
+@keyframes po-pulse-destaque {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(22, 163, 74, 0.5), 0 6px 18px rgba(22, 163, 74, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 12px rgba(22, 163, 74, 0), 0 6px 18px rgba(22, 163, 74, 0.4);
   }
 }
 

@@ -111,20 +111,27 @@
 </mat-expansion-panel>
 
 <div class="po-search-row">
-  <mat-form-field appearance="outline" class="po-search-field">
-    <mat-icon matPrefix>search</mat-icon>
-    <input
-      matInput
-      placeholder="Buscar por número do documento…"
-      [ngModel]="busca()"
-      (ngModelChange)="busca.set($event)"
-      (keyup.enter)="filtrar()"
-      [ngModelOptions]="{ standalone: true }"
-    />
-  </mat-form-field>
+  <div class="po-search-combo">
+    <mat-form-field appearance="outline" class="po-search-field">
+      <mat-icon matPrefix>search</mat-icon>
+      <input
+        matInput
+        placeholder="Buscar por número do documento…"
+        [ngModel]="busca()"
+        (ngModelChange)="busca.set($event)"
+        (keyup.enter)="filtrar()"
+        [ngModelOptions]="{ standalone: true }"
+      />
+    </mat-form-field>
+
+    <button mat-flat-button color="primary" type="button" class="po-search-combo__botao" (click)="filtrar()">
+      <mat-icon>search</mat-icon>
+      Buscar
+    </button>
+  </div>
 
   @if (ehMobilizador()) {
-    <a mat-flat-button color="primary" routerLink="/protocolar">
+    <a mat-flat-button color="primary" class="po-search-row__botao-protocolar" routerLink="/protocolar">
       <mat-icon>add</mat-icon>
       Protocolar Ofício
     </a>
@@ -133,15 +140,18 @@
 
 @if (carregando()) {
   <app-loading-state mensagem="Carregando solicitações…"></app-loading-state>
-} @else if (solicitacoesDaAba().length === 0) {
-  <app-empty-state mensagem="Nenhum dado disponível"></app-empty-state>
+} @else if (solicitacoesFiltradas().length === 0) {
+  <app-empty-state
+    [mensagem]="busca().trim() ? 'Nenhum resultado para \'' + busca().trim() + '\'' : 'Nenhum dado disponível'"
+  ></app-empty-state>
 } @else if (!modoTabela()) {
   <div class="po-cards-grid">
-    @for (solicitacao of solicitacoesDaAba(); track solicitacao.id) {
+    @for (solicitacao of solicitacoesFiltradas(); track solicitacao.id) {
       <div class="po-list-card">
         <div class="po-list-card__header">
           <mat-icon class="po-list-card__title-icon">description</mat-icon>
           <span class="po-list-card__title">{{ solicitacao.assunto }}</span>
+
           <button
             mat-icon-button
             [matMenuTriggerFor]="menuAcoes"
@@ -192,6 +202,30 @@
         </div>
 
         <div class="po-list-card__footer">
+          @if (solicitacao.anexoOficioId) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="po-list-card__pdf-btn"
+              matTooltip="Abrir PDF do ofício"
+              (click)="abrirPdf(solicitacao)"
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              Documento
+            </button>
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              class="po-list-card__pdf-btn po-list-card__pdf-btn--vazio"
+              matTooltip="Sem PDF anexado"
+              disabled
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              Documento
+            </button>
+          }
+
           <a
             mat-stroked-button
             matTooltip="Ver detalhe e o ofício em PDF"
@@ -222,7 +256,7 @@
         </tr>
       </thead>
       <tbody>
-        @for (solicitacao of solicitacoesDaAba(); track solicitacao.id) {
+        @for (solicitacao of solicitacoesFiltradas(); track solicitacao.id) {
           <tr>
             <td>{{ solicitacao.numeroDocumento || '—' }}</td>
             <td>{{ solicitacao.parceiroNome || '—' }}</td>

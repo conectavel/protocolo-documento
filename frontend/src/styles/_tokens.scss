@@ -170,6 +170,7 @@ $po-dark-theme: mat.m2-define-dark-theme(
   --sidebar-bg: #0f5c4d;
   --sidebar-icon-inactive: #9fcbbd;
   --sidebar-icon-active: #4ade80;
+  --sidebar-item-active-bg: #14795f;
   --header-bg: #ffffff;
   --footer-border: #e2e8f0;
 
@@ -197,8 +198,9 @@ $po-dark-theme: mat.m2-define-dark-theme(
   --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.08);
   --shadow-card-hover: 0 10px 20px rgba(0, 0, 0, 0.1);
 
-  // Layout do casco
-  --sidebar-width: 80px;
+  // Layout do casco — sidebar larga com ícone + rótulo (padrão SENAR-GO informado
+  // pelo cliente), não mais o modelo compacto "só ícones" de 80px.
+  --sidebar-width: 224px;
   --header-height: 64px;
   --footer-height: 56px;
 }
@@ -238,6 +240,7 @@ $po-dark-theme: mat.m2-define-dark-theme(
   --banner-border: #92400e;
 
   --sidebar-bg: #0c463b;
+  --sidebar-item-active-bg: #106350;
   --header-bg: #1f2937;
   --footer-border: #374151;
 }

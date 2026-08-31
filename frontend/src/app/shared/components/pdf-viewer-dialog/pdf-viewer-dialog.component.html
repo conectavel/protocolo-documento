@@ -1,0 +1,15 @@
+<h2 mat-dialog-title class="po-pdf-dialog-title">
+  <mat-icon>picture_as_pdf</mat-icon>
+  <span>{{ data.titulo }}</span>
+  <button mat-icon-button (click)="fechar()" aria-label="Fechar">
+    <mat-icon>close</mat-icon>
+  </button>
+</h2>
+
+<mat-dialog-content>
+  <app-pdf-viewer
+    [anexoId]="data.anexoId"
+    [nomeArquivo]="data.nomeArquivo || 'oficio.pdf'"
+    altura="70vh"
+  ></app-pdf-viewer>
+</mat-dialog-content>

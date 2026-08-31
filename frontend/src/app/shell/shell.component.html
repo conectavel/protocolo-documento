@@ -1,6 +1,10 @@
 <div class="shell">
-  <aside class="shell-sidebar">
-    <div class="shell-sidebar__logo" matTooltip="Protocolo de Ofício" matTooltipPosition="right">
+  @if (menuMobileAberto()) {
+    <div class="shell-backdrop" (click)="fecharMenuMobile()"></div>
+  }
+
+  <aside class="shell-sidebar" [class.shell-sidebar--mobile-aberta]="menuMobileAberto()">
+    <div class="shell-sidebar__logo">
       <img src="assets/branding/senar-logo.svg" alt="SENAR" />
     </div>
 
@@ -10,10 +14,10 @@
           class="shell-sidebar__item"
           [routerLink]="item.rota"
           routerLinkActive="shell-sidebar__item--active"
-          [matTooltip]="item.rotulo"
-          matTooltipPosition="right"
+          (click)="fecharMenuMobile()"
         >
           <mat-icon>{{ item.icone }}</mat-icon>
+          <span>{{ item.rotulo }}</span>
         </a>
       }
     </nav>
@@ -23,12 +27,21 @@
     <header class="shell-header">
       <button
         type="button"
-        class="shell-header__icon-btn"
-        matTooltip="Alternar menu"
-        aria-label="Alternar menu"
+        class="shell-header__icon-btn shell-header__menu-toggle"
+        (click)="alternarMenuMobile()"
+        matTooltip="Abrir menu"
+        aria-label="Abrir menu"
       >
         <mat-icon>menu</mat-icon>
       </button>
+
+      <div class="shell-header__brand">
+        <img src="assets/branding/senar-logo-verde.svg" alt="SENAR" />
+        <div class="shell-header__brand-text">
+          <strong>e-Senar</strong>
+          <span>Protocolo de Ofício</span>
+        </div>
+      </div>
 
       <div class="shell-header__spacer"></div>
 

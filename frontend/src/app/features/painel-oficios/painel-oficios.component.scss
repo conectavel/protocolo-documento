@@ -95,7 +95,7 @@
 
   &__header {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: 8px;
     margin-bottom: 12px;
   }
@@ -103,6 +103,7 @@
   &__title-icon {
     color: var(--color-accent);
     flex-shrink: 0;
+    margin-top: 2px;
   }
 
   &__title {
@@ -110,9 +111,23 @@
     font-size: 16px;
     font-weight: 600;
     color: var(--color-text-primary);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.3;
+    padding-top: 2px;
+  }
+
+  // Botão "Documento" no rodapé (junto de "Ver detalhe"), não mais um ícone
+  // solto perto do título — evita disputar espaço com o título e deixa claro
+  // que é uma ação, com rótulo, igual ao "Ver detalhe" ao lado.
+  &__pdf-btn {
+    color: var(--color-warn);
+    border-color: currentColor;
+
+    &--vazio {
+      color: var(--color-text-secondary);
+      opacity: 0.5;
+    }
   }
 
   &__menu {
@@ -154,7 +169,7 @@
 
   &__footer {
     display: flex;
-    justify-content: flex-end;
+    justify-content: space-between;
     gap: 4px;
     margin-top: 16px;
     padding-top: 8px;

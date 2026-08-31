@@ -13,65 +13,66 @@
   background: linear-gradient(180deg, var(--sidebar-bg) 0%, color-mix(in srgb, var(--sidebar-bg) 85%, black) 100%);
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding: 16px 0;
+  align-items: stretch;
+  padding: 24px 14px;
+  overflow-y: auto;
 
   @media (max-width: 960px) {
-    display: none;
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 40;
+    transform: translateX(-100%);
+    transition: transform 0.25s ease;
+    box-shadow: 8px 0 24px rgba(0, 0, 0, 0.25);
+
+    &--mobile-aberta {
+      transform: translateX(0);
+    }
   }
 
   &__logo {
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
     display: flex;
+    flex-direction: column;
     align-items: center;
-    justify-content: center;
-    background: rgba(255, 255, 255, 0.1);
-    margin-bottom: 28px;
-    transition: background-color 0.2s ease, transform 0.2s ease;
-
-    &:hover {
-      background: rgba(255, 255, 255, 0.18);
-      transform: scale(1.05);
-    }
+    gap: 8px;
+    margin-bottom: 32px;
+    padding-top: 4px;
 
     img {
-      width: 26px;
-      height: 26px;
+      width: 52px;
+      height: 52px;
     }
   }
 
   &__nav {
     display: flex;
     flex-direction: column;
-    align-items: center;
-    gap: 8px;
+    gap: 4px;
   }
 
   &__item {
-    position: relative;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
     display: flex;
     align-items: center;
-    justify-content: center;
+    gap: 12px;
+    padding: 11px 14px;
+    border-radius: var(--radius-sm);
     color: var(--sidebar-icon-inactive);
+    font-size: 13px;
+    font-weight: 500;
     cursor: pointer;
     transition: background-color 0.2s ease, color 0.2s ease;
 
-    &::before {
-      content: '';
-      position: absolute;
-      left: -16px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: 3px;
-      height: 0;
-      border-radius: 0 3px 3px 0;
-      background: var(--sidebar-icon-active);
-      transition: height 0.2s ease;
+    .mat-icon {
+      flex-shrink: 0;
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+    }
+
+    span {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     &:hover {
@@ -80,13 +81,23 @@
     }
 
     &--active {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--sidebar-icon-active);
-
-      &::before {
-        height: 22px;
-      }
+      background: var(--sidebar-item-active-bg);
+      color: #ffffff;
+      font-weight: 600;
     }
+  }
+}
+
+// Fundo escurecido atrás do drawer mobile — clicar nele fecha o menu.
+.shell-backdrop {
+  display: none;
+
+  @media (max-width: 960px) {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    background: rgba(15, 23, 42, 0.5);
   }
 }
 
@@ -107,6 +118,54 @@
   align-items: center;
   gap: 8px;
   padding: 0 24px;
+
+  @media (max-width: 600px) {
+    padding: 0 12px;
+    gap: 4px;
+  }
+
+  &__menu-toggle {
+    display: none;
+
+    @media (max-width: 960px) {
+      display: flex;
+    }
+  }
+
+  &__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    img {
+      width: 30px;
+      height: 30px;
+      flex-shrink: 0;
+    }
+  }
+
+  &__brand-text {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+
+    strong {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--color-text-primary);
+    }
+
+    span {
+      font-size: 11px;
+      color: var(--color-text-secondary);
+    }
+
+    @media (max-width: 480px) {
+      span {
+        display: none;
+      }
+    }
+  }
 
   &__spacer {
     flex: 1;
@@ -173,8 +232,17 @@
 .shell-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: var(--page-padding);
   background: var(--color-bg-page);
+
+  @media (max-width: 960px) {
+    padding: 24px;
+  }
+
+  @media (max-width: 600px) {
+    padding: 16px;
+  }
 }
 
 .shell-footer {
@@ -187,4 +255,9 @@
   padding: 0 24px;
   font-size: 12px;
   color: var(--color-text-secondary);
+
+  @media (max-width: 600px) {
+    padding: 0 16px;
+    font-size: 11px;
+  }
 }

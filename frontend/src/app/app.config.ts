@@ -25,7 +25,11 @@ export const appConfig: ApplicationConfig = {
     // identidade visual SENAR-GO (referência: sistemafaeg.org.br).
     {
       provide: MAT_FORM_FIELD_DEFAULT_OPTIONS,
-      useValue: { appearance: 'outline', floatLabel: 'always' },
+      // subscriptSizing: 'dynamic' — não reserva a faixa de espaço para
+      // hint/erro quando ela está vazia; sem isso, a altura real do
+      // mat-form-field fica maior que a caixa visível do input, o que
+      // desalinha qualquer botão colocado ao lado (ex.: busca + "Buscar").
+      useValue: { appearance: 'outline', floatLabel: 'always', subscriptSizing: 'dynamic' },
     },
   ],
 };

@@ -1,0 +1,16 @@
+.po-pdf-dialog-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+
+  span {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .mat-icon:first-child {
+    color: var(--color-warn);
+  }
+}

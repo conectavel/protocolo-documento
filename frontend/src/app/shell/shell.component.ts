@@ -18,9 +18,9 @@ interface ItemNavegacao {
 }
 
 /**
- * Casco Fuse Compact — padrao-layout-fuse.md seção 1.
- * Sidebar 80px (#1E293B, só ícones) + header 64px + conteúdo
- * (fundo #F1F5F9, padding 48px) + footer 56px.
+ * Casco do sistema — sidebar verde SENAR-GO com ícone + rótulo (224px, expande
+ * como drawer sobre o conteúdo em telas <= 960px) + header 64px + conteúdo
+ * (fundo #F1F5F9, padding responsivo) + footer 56px.
  */
 @Component({
   selector: 'app-shell',
@@ -51,6 +51,10 @@ export class ShellComponent {
   private readonly temaEscuroSignal = signal(this.lerTemaArmazenado() === 'dark');
   readonly temaEscuro = computed(() => this.temaEscuroSignal());
   readonly anoAtual = new Date().getFullYear();
+
+  // Drawer da sidebar em telas estreitas (<= 960px, ver shell.component.scss) —
+  // a sidebar deixa de ficar sempre visível e passa a abrir por cima do conteúdo.
+  readonly menuMobileAberto = signal(false);
 
   constructor() {
     this.aplicarTema(this.temaEscuroSignal());
@@ -110,6 +114,14 @@ export class ShellComponent {
       return true;
     });
   });
+
+  alternarMenuMobile(): void {
+    this.menuMobileAberto.update((valor) => !valor);
+  }
+
+  fecharMenuMobile(): void {
+    this.menuMobileAberto.set(false);
+  }
 
   alternarTema(): void {
     this.temaEscuroSignal.update((valor) => !valor);
