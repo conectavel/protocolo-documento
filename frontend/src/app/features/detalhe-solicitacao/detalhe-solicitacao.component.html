@@ -1,0 +1,325 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>description</mat-icon>
+    Detalhe da Solicitação
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Acompanhe os dados do ofício, os itens solicitados e as ações do fluxo.
+  </p>
+</div>
+
+@if (carregando()) {
+  <app-loading-state mensagem="Carregando solicitação…"></app-loading-state>
+} @else if (!solicitacao()) {
+  <app-empty-state mensagem="Solicitação não encontrada"></app-empty-state>
+} @else {
+  <ng-container *ngIf="solicitacao() as sol">
+    @if (erroAcao()) {
+      <div class="po-banner">
+        <div class="po-banner-text">
+          <mat-icon>error_outline</mat-icon>
+          <span>{{ erroAcao() }}</span>
+        </div>
+      </div>
+    }
+
+    <!-- Identificação -->
+    <div class="po-card">
+      <div class="po-card-section-title">
+        <span>{{ sol.assunto }}</span>
+        <app-status-chip [statusMacro]="sol.statusMacro"></app-status-chip>
+      </div>
+      <div class="po-divider-gradient"></div>
+
+      <div class="po-grid">
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Parceiro</span>
+          <span class="po-detalhe-valor">{{ sol.parceiroNome || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Município</span>
+          <span class="po-detalhe-valor">{{ sol.municipio || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Presidente</span>
+          <span class="po-detalhe-valor">{{ sol.presidenteNome || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Mobilizador</span>
+          <span class="po-detalhe-valor">{{ sol.mobilizadorNome || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Nº do Documento</span>
+          <span class="po-detalhe-valor">{{ sol.numeroDocumento || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Data do Documento</span>
+          <span class="po-detalhe-valor">{{ sol.dataDocumento | date: 'dd/MM/yyyy' }}</span>
+        </div>
+
+        @if (sol.etapaAtual) {
+          <div class="po-detalhe-campo">
+            <span class="po-detalhe-label">Etapa Atual</span>
+            <span class="po-detalhe-valor">{{ sol.etapaAtual }}</span>
+          </div>
+        }
+      </div>
+
+      @if (sol.resumoObservacoes) {
+        <p class="po-detalhe-observacoes">{{ sol.resumoObservacoes }}</p>
+      }
+
+      <div class="po-mt-16">
+        <div class="po-card-section-title">Documento que originou o protocolo</div>
+        <div class="po-divider-gradient"></div>
+        <app-pdf-viewer [anexoId]="sol.anexoOficioId" nomeArquivo="ofício.pdf"></app-pdf-viewer>
+      </div>
+    </div>
+
+    <!-- Ações do fluxo — nível da solicitação -->
+    @if (podeDarCiencia() || podeAnalisarAssessoria() || podeDespachar() || podeDirecionar()) {
+      <div class="po-card">
+        <div class="po-card-section-title">Ações do Fluxo</div>
+        <div class="po-divider-gradient"></div>
+
+        @if (podeDarCiencia()) {
+          <p class="po-hint">
+            Como Coordenador Regional, dê ciência a esta solicitação (SLA de 24h).
+          </p>
+          <button mat-flat-button color="primary" [disabled]="executandoAcao()" (click)="darCiencia()">
+            <mat-icon>check_circle</mat-icon>
+            Dar Ciência
+          </button>
+        }
+
+        @if (podeAnalisarAssessoria()) {
+          <p class="po-hint">Analise a solicitação e escolha uma decisão.</p>
+          <div class="po-acoes-linha">
+            <button mat-flat-button color="primary" [disabled]="executandoAcao()" (click)="aprovarAssessoria()">
+              <mat-icon>check</mat-icon>
+              Aprovar / Prosseguir
+            </button>
+            <button mat-stroked-button [disabled]="executandoAcao()" (click)="devolverAssessoria()">
+              <mat-icon>undo</mat-icon>
+              Devolver para Ajuste
+            </button>
+            <button mat-flat-button color="warn" [disabled]="executandoAcao()" (click)="recusarAssessoria()">
+              <mat-icon>close</mat-icon>
+              Recusar
+            </button>
+          </div>
+        }
+
+        @if (podeDespachar()) {
+          <p class="po-hint">Despache esta solicitação para a Diretoria Educacional.</p>
+          <button mat-flat-button color="primary" [disabled]="executandoAcao()" (click)="despachar()">
+            <mat-icon>send</mat-icon>
+            Despachar para Diretoria Educacional
+          </button>
+        }
+
+        @if (podeDirecionar()) {
+          <form [formGroup]="direcionarForm" class="po-grid po-grid--2 po-mt-16">
+            <mat-form-field appearance="outline">
+              <mat-label>Área/Programa</mat-label>
+              <mat-select formControlName="areaProgramaId">
+                @for (area of areasPrograma(); track area.id) {
+                  <mat-option [value]="area.id">{{ area.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+            <mat-form-field appearance="outline">
+              <mat-label>Coordenador (opcional — deixe em branco para delegar ao Gestor)</mat-label>
+              <mat-select formControlName="coordenadorId">
+                <mat-option value="">Delegar ao Gestor</mat-option>
+                @for (coord of coordenadoresDaArea(direcionarForm.controls.areaProgramaId.value); track coord.id) {
+                  <mat-option [value]="coord.id">{{ coord.nome }}</mat-option>
+                }
+              </mat-select>
+            </mat-form-field>
+          </form>
+          <button
+            mat-flat-button
+            color="primary"
+            class="po-mt-16"
+            [disabled]="executandoAcao()"
+            (click)="direcionar()"
+          >
+            <mat-icon>alt_route</mat-icon>
+            Direcionar
+          </button>
+        }
+      </div>
+    }
+
+    <!-- Itens da solicitação -->
+    <div class="po-card">
+      <div class="po-card-section-title">Itens da Solicitação</div>
+      <div class="po-divider-gradient"></div>
+
+      @for (item of sol.itens; track item.id ?? $index) {
+        <div class="po-nested-block po-item-block">
+          <div class="po-item-block__cabecalho">
+            <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
+            <span class="po-item-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
+            @if (item.statusItem) {
+              <app-status-chip [statusItem]="item.statusItem"></app-status-chip>
+            }
+          </div>
+
+          @if (item.areaProgramaNome) {
+            <p class="po-item-block__linha">Área/Programa: {{ item.areaProgramaNome }}</p>
+          }
+          @if (item.coordenadorNome) {
+            <p class="po-item-block__linha">Coordenador: {{ item.coordenadorNome }}</p>
+          }
+          @if (item.resumo) {
+            <p class="po-item-block__linha">{{ item.resumo }}</p>
+          }
+
+          @if (itemPodeSerDesignado(item)) {
+            <button mat-flat-button color="primary" class="po-mt-16" (click)="designarCoordenador(item)">
+              <mat-icon>person_add</mat-icon>
+              Designar Coordenador
+            </button>
+          }
+
+          @if (itemPodeSerAceitoOuEncaminhado(item)) {
+            <div class="po-acoes-linha po-mt-16">
+              <button mat-flat-button color="primary" (click)="aceitarItem(item)">
+                <mat-icon>check</mat-icon>
+                Aceitar
+              </button>
+              <button mat-stroked-button (click)="encaminharItem(item)">
+                <mat-icon>forward</mat-icon>
+                Encaminhar para outra gerência
+              </button>
+            </div>
+          }
+
+          @if (itemPodeReceberDevolutiva(item)) {
+            <form [formGroup]="formularioDevolutiva($index)" class="po-grid po-mt-16">
+              <mat-form-field appearance="outline">
+                <mat-label>Resultado</mat-label>
+                <mat-select formControlName="resultado">
+                  @for (opcao of resultadosDevolutiva; track opcao.valor) {
+                    <mat-option [value]="opcao.valor">{{ opcao.rotulo }}</mat-option>
+                  }
+                </mat-select>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Data do evento</mat-label>
+                <input matInput [matDatepicker]="pickerEvento" formControlName="dataEvento" />
+                <mat-datepicker-toggle matIconSuffix [for]="pickerEvento"></mat-datepicker-toggle>
+                <mat-datepicker #pickerEvento></mat-datepicker>
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Horário</mat-label>
+                <input matInput formControlName="horario" placeholder="hh:mm" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Local</mat-label>
+                <input matInput formControlName="local" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Nº do Evento/Turma (Fluig)</mat-label>
+                <input matInput formControlName="numeroEventoTurma" />
+              </mat-form-field>
+              <mat-form-field appearance="outline">
+                <mat-label>Nº do Processo de Aceite Fluig</mat-label>
+                <input matInput formControlName="numeroProcessoAceiteFluig" />
+              </mat-form-field>
+              <mat-form-field appearance="outline" class="po-field-full">
+                <mat-label>Justificativa (obrigatória se não totalmente atendido)</mat-label>
+                <textarea matInput rows="3" formControlName="justificativa"></textarea>
+              </mat-form-field>
+            </form>
+            <button
+              mat-flat-button
+              color="primary"
+              class="po-mt-16"
+              [disabled]="executandoAcao()"
+              (click)="registrarDevolutiva(item, $index)"
+            >
+              <mat-icon>fact_check</mat-icon>
+              Registrar Devolutiva
+            </button>
+          }
+
+          @if (item.devolutiva) {
+            <div class="po-devolutiva-resumo">
+              <app-status-chip
+                [label]="item.devolutiva.resultado === 'ATENDIDO' ? 'Atendido' : (item.devolutiva.resultado === 'PARCIALMENTE_ATENDIDO' ? 'Parcialmente Atendido' : 'Não Atendido')"
+                [tomForcado]="item.devolutiva.resultado === 'ATENDIDO' ? 'success' : (item.devolutiva.resultado === 'PARCIALMENTE_ATENDIDO' ? 'warning' : 'neutral')"
+              ></app-status-chip>
+              @if (item.devolutiva.justificativa) {
+                <p class="po-item-block__linha">{{ item.devolutiva.justificativa }}</p>
+              }
+              @if (item.devolutiva.numeroEventoTurma) {
+                <p class="po-item-block__linha">Nº Evento/Turma (Fluig): {{ item.devolutiva.numeroEventoTurma }}</p>
+              }
+              @if (item.devolutiva.numeroProcessoAceiteFluig) {
+                <p class="po-item-block__linha">Nº Processo de Aceite Fluig: {{ item.devolutiva.numeroProcessoAceiteFluig }}</p>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Devolutiva consolidada (HU09) -->
+    @if (ehMobilizador()) {
+      <div class="po-card">
+        <div class="po-card-section-title">Devolutiva Consolidada</div>
+        <div class="po-divider-gradient"></div>
+
+        @for (item of sol.itens; track item.id ?? $index) {
+          <div class="po-nested-block">
+            <div class="po-item-block__cabecalho">
+              <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
+              <span class="po-item-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
+              @if (item.devolutiva) {
+                <app-status-chip
+                  [label]="item.devolutiva.resultado === 'ATENDIDO' ? 'Atendido' : (item.devolutiva.resultado === 'PARCIALMENTE_ATENDIDO' ? 'Parcialmente Atendido' : 'Não Atendido')"
+                  [tomForcado]="item.devolutiva.resultado === 'ATENDIDO' ? 'success' : (item.devolutiva.resultado === 'PARCIALMENTE_ATENDIDO' ? 'warning' : 'neutral')"
+                ></app-status-chip>
+              } @else {
+                <span class="po-chip po-chip--warning">Em andamento</span>
+              }
+            </div>
+            @if (item.devolutiva?.justificativa) {
+              <p class="po-item-block__linha">{{ item.devolutiva?.justificativa }}</p>
+            }
+          </div>
+        }
+      </div>
+    }
+
+    <!-- Histórico (apenas papéis internos — HU01) -->
+    @if (sol.tramitacoes && sol.tramitacoes.length > 0) {
+      <div class="po-card">
+        <div class="po-card-section-title">Histórico de Tramitação</div>
+        <div class="po-divider-gradient"></div>
+
+        @for (tramitacao of sol.tramitacoes; track tramitacao.id) {
+          <div class="po-historico-item">
+            <mat-icon>schedule</mat-icon>
+            <div>
+              <strong>{{ tramitacao.acao }}</strong>
+              <span>{{ tramitacao.para }} · {{ tramitacao.responsavelNome || 'Sistema' }} · {{ tramitacao.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+              @if (tramitacao.motivo) {
+                <p>{{ tramitacao.motivo }}</p>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    }
+
+    <a mat-flat-button color="primary" routerLink="/painel">
+      <mat-icon>arrow_back</mat-icon>
+      Voltar ao Painel
+    </a>
+  </ng-container>
+}

@@ -1,0 +1,21 @@
+export enum Papel {
+  MOBILIZADOR = 'MOBILIZADOR',
+  COORDENADOR_REGIONAL = 'COORDENADOR_REGIONAL',
+  ASSESSOR = 'ASSESSOR',
+  SUPERINTENDENTE = 'SUPERINTENDENTE',
+  DIRETOR_EDUCACIONAL = 'DIRETOR_EDUCACIONAL',
+  GESTOR = 'GESTOR',
+  COORDENADOR = 'COORDENADOR',
+  ADMIN = 'ADMIN',
+}
+
+/** Papéis que operam exclusivamente dentro da organização (nunca o Mobilizador). */
+export const PAPEIS_INTERNOS: Papel[] = [
+  Papel.COORDENADOR_REGIONAL,
+  Papel.ASSESSOR,
+  Papel.SUPERINTENDENTE,
+  Papel.DIRETOR_EDUCACIONAL,
+  Papel.GESTOR,
+  Papel.COORDENADOR,
+  Papel.ADMIN,
+];

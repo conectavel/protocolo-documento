@@ -1,0 +1,59 @@
+<div class="po-pdf-viewer">
+  <div class="po-pdf-viewer__cabecalho">
+    <div class="po-pdf-viewer__arquivo">
+      <mat-icon>picture_as_pdf</mat-icon>
+      <span class="po-pdf-viewer__nome">{{ nomeArquivo() }}</span>
+    </div>
+
+    <div class="po-pdf-viewer__acoes">
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="carregando() || !!erro()"
+        matTooltip="Abrir em nova aba"
+        (click)="abrirNovaAba()"
+      >
+        <mat-icon>open_in_new</mat-icon>
+        Abrir
+      </button>
+      <button
+        mat-stroked-button
+        type="button"
+        [disabled]="carregando() || !!erro()"
+        matTooltip="Baixar o PDF"
+        (click)="baixar()"
+      >
+        <mat-icon>download</mat-icon>
+        Baixar
+      </button>
+      @if (podeRemover()) {
+        <button
+          mat-stroked-button
+          color="warn"
+          type="button"
+          matTooltip="Remover o arquivo anexado"
+          (click)="remover.emit()"
+        >
+          <mat-icon>delete</mat-icon>
+          Remover
+        </button>
+      }
+    </div>
+  </div>
+
+  <div class="po-pdf-viewer__quadro" [style.height]="altura()">
+    @if (carregando()) {
+      <div class="po-pdf-viewer__estado">
+        <mat-spinner diameter="32"></mat-spinner>
+        <span>Carregando PDF…</span>
+      </div>
+    } @else if (erro()) {
+      <div class="po-pdf-viewer__estado po-pdf-viewer__estado--erro">
+        <mat-icon>error_outline</mat-icon>
+        <span>{{ erro() }}</span>
+      </div>
+    } @else if (urlVisualizacao()) {
+      <iframe [src]="urlVisualizacao()" title="Visualização do ofício em PDF"></iframe>
+    }
+  </div>
+</div>

@@ -1,0 +1,125 @@
+<div class="login-page">
+  <!-- Painel de marca -->
+  <div class="login-brand">
+    <svg class="login-brand__arcos" viewBox="0 0 200 200" aria-hidden="true">
+      <path d="M 20 190 A 170 170 0 0 1 190 20" fill="none" stroke="#dcfce7" stroke-width="14" stroke-linecap="round" opacity="0.35" />
+      <path d="M 20 155 A 135 135 0 0 1 155 20" fill="none" stroke="#bbf7d0" stroke-width="14" stroke-linecap="round" opacity="0.5" />
+      <path d="M 20 120 A 100 100 0 0 1 120 20" fill="none" stroke="#86efac" stroke-width="14" stroke-linecap="round" opacity="0.65" />
+      <path d="M 20 85 A 65 65 0 0 1 85 20" fill="none" stroke="#4ade80" stroke-width="14" stroke-linecap="round" opacity="0.8" />
+      <path d="M 20 50 A 30 30 0 0 1 50 20" fill="none" stroke="#f0fdf4" stroke-width="14" stroke-linecap="round" />
+    </svg>
+
+    <div class="login-brand__conteudo">
+      <div class="login-brand__marca">
+        <mat-icon>eco</mat-icon>
+        <span>SENAR-GO</span>
+      </div>
+      <h1>Protocolo de Ofício</h1>
+      <p>
+        Acompanhe, do protocolo à devolutiva, todo o fluxo de solicitações de cursos,
+        patrocínios, itens e convites — com rastreabilidade completa em cada etapa.
+      </p>
+
+      <ul class="login-brand__destaques">
+        <li><mat-icon>task_alt</mat-icon> Fluxo estruturado, com prazos e responsáveis</li>
+        <li><mat-icon>sync</mat-icon> Dados sempre atualizados via RM/ACORP</li>
+        <li><mat-icon>insights</mat-icon> Indicadores e devolutiva consolidada</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- Painel do formulário -->
+  <div class="login-form-panel">
+    <div class="login-card">
+      <div class="login-card__brand-mobile">
+        <mat-icon>description</mat-icon>
+        <div>
+          <h1>Protocolo de Ofício</h1>
+          <p>e-Senar / FAEG</p>
+        </div>
+      </div>
+
+      <h2 class="login-card__titulo">Entrar</h2>
+      <p class="login-card__subtitulo">Use seu e-mail institucional para acessar o sistema.</p>
+
+      <form [formGroup]="formulario" (ngSubmit)="entrar()" class="login-card__form">
+        <mat-form-field appearance="outline">
+          <mat-label>E-mail</mat-label>
+          <input matInput type="email" formControlName="email" autocomplete="username" />
+          <mat-icon matSuffix>mail_outline</mat-icon>
+          @if (formulario.controls.email.invalid && formulario.controls.email.touched) {
+            <mat-error>Informe um e-mail válido</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Senha</mat-label>
+          <input
+            matInput
+            [type]="ocultarSenha() ? 'password' : 'text'"
+            formControlName="senha"
+            autocomplete="current-password"
+          />
+          <button
+            mat-icon-button
+            matSuffix
+            type="button"
+            (click)="alternarVisibilidadeSenha()"
+            [attr.aria-label]="'Mostrar senha'"
+          >
+            <mat-icon>{{ ocultarSenha() ? 'visibility_off' : 'visibility' }}</mat-icon>
+          </button>
+          @if (formulario.controls.senha.invalid && formulario.controls.senha.touched) {
+            <mat-error>Informe a senha</mat-error>
+          }
+        </mat-form-field>
+
+        @if (erro()) {
+          <div class="login-card__erro">
+            <mat-icon>error_outline</mat-icon>
+            <span>{{ erro() }}</span>
+          </div>
+        }
+
+        <button
+          mat-flat-button
+          color="primary"
+          type="submit"
+          class="login-card__submit"
+          [disabled]="carregando()"
+        >
+          @if (carregando()) {
+            <mat-spinner diameter="24" color="accent"></mat-spinner>
+          } @else {
+            <span>Entrar</span>
+          }
+        </button>
+      </form>
+
+      @if (modoDebug) {
+        <div class="login-card__debug">
+          <div class="login-card__debug-titulo">
+            <mat-icon>bug_report</mat-icon>
+            Modo debug — entrar direto como
+          </div>
+          <div class="login-card__debug-grid">
+            @for (usuario of usuariosDebug; track usuario.email) {
+              <button
+                mat-stroked-button
+                type="button"
+                [disabled]="carregando()"
+                (click)="entrarComoDebug(usuario)"
+              >
+                @if (papelEmLogin() === usuario.papel) {
+                  <mat-spinner diameter="16"></mat-spinner>
+                } @else {
+                  <span>{{ usuario.papel }}</span>
+                }
+              </button>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  </div>
+</div>

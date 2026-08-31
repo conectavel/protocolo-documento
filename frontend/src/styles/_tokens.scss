@@ -1,0 +1,249 @@
+// =============================================================
+// Tokens visuais — Fuse Compact + Material
+// Fonte: documentacao/padrao-layout-fuse.md (seção 2)
+// Não alterar valores sem atualizar a spec visual.
+// =============================================================
+
+@use '@angular/material' as mat;
+
+// -------------------------------------------------------------
+// Paleta customizada — teal (primary) e emerald (acento)
+// -------------------------------------------------------------
+$teal-palette: (
+  50: #f0fdfa,
+  100: #ccfbf1,
+  200: #99f6e4,
+  300: #5eead4,
+  400: #2dd4bf,
+  500: #14b8a6,
+  600: #0d9488,
+  700: #0f766e,
+  800: #115e59,
+  900: #134e4a,
+  contrast: (
+    50: #134e4a,
+    100: #134e4a,
+    200: #134e4a,
+    300: #134e4a,
+    400: #134e4a,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+// Verde SENAR-GO (ajustado a partir da identidade visual informada pelo cliente —
+// sidebar/logo em tons de verde-folha). Validado como cor de status "bom/atendido"
+// pelo validador de paleta (scripts/validate_palette.js da skill dataviz): passa
+// banda de luminosidade, piso de croma e separação CVD junto com âmbar/rosa-vermelho.
+$emerald-palette: (
+  50: #f0fdf4,
+  100: #dcfce7,
+  200: #bbf7d0,
+  300: #86efac,
+  400: #4ade80,
+  500: #22c55e,
+  600: #16a34a,
+  700: #15803d,
+  800: #166534,
+  900: #14532d,
+  contrast: (
+    50: #14532d,
+    100: #14532d,
+    200: #14532d,
+    300: #14532d,
+    400: #14532d,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+$red-palette: (
+  50: #fef2f2,
+  100: #fee2e2,
+  200: #fecaca,
+  300: #fca5a5,
+  400: #f87171,
+  500: #ef4444,
+  600: #dc2626,
+  700: #b91c1c,
+  800: #991b1b,
+  900: #7f1d1d,
+  contrast: (
+    50: #7f1d1d,
+    100: #7f1d1d,
+    200: #7f1d1d,
+    300: #7f1d1d,
+    400: #7f1d1d,
+    500: #ffffff,
+    600: #ffffff,
+    700: #ffffff,
+    800: #ffffff,
+    900: #ffffff,
+  ),
+);
+
+// Nota: a partir do Angular Material 18, a API legada M2 de theming
+// (define-palette/define-light-theme/define-typography-config) passou a
+// ser exposta com o prefixo `m2-` no ponto de entrada '@angular/material'
+// (as funções sem prefixo agora são a nova API M3). Mantemos a API M2
+// aqui porque ela é suficiente para os tokens fixos desta spec visual.
+$po-primary: mat.m2-define-palette($teal-palette, 600, 400, 700);
+$po-accent: mat.m2-define-palette($emerald-palette, 600, 400, 700);
+$po-warn: mat.m2-define-palette($red-palette, 600, 400, 700);
+
+$po-typography: mat.m2-define-typography-config(
+  $font-family: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif',
+);
+
+$po-light-theme: mat.m2-define-light-theme(
+  (
+    color: (
+      primary: $po-primary,
+      accent: $po-accent,
+      warn: $po-warn,
+    ),
+    typography: $po-typography,
+    density: -2, // compacto — inputs/selects mais baixos (padrão Fuse Compact)
+  )
+);
+
+// Tema escuro dos componentes Material — usado apenas quando [data-theme='dark']
+// está presente no <html> (escolha explícita do usuário, nunca automática).
+$po-dark-theme: mat.m2-define-dark-theme(
+  (
+    color: (
+      primary: $po-primary,
+      accent: $po-accent,
+      warn: $po-warn,
+    ),
+    typography: $po-typography,
+    density: -2, // compacto — inputs/selects mais baixos (padrão Fuse Compact)
+  )
+);
+
+// -------------------------------------------------------------
+// Custom properties — usadas diretamente nos componentes (SCSS)
+// -------------------------------------------------------------
+:root {
+  // Cor — modo claro
+  --color-primary: #0d9488;
+  --color-primary-hover: #0f766e;
+  --color-primary-contrast: #ffffff;
+  --color-accent: #16a34a;
+  --color-accent-light: #f0fdf4;
+  --color-warn: #dc2626;
+  --color-secondary-blue: #2563eb;
+
+  // Cores de status validadas para gráficos/KPIs (dataviz skill — passam banda de
+  // luminosidade, piso de croma e separação CVD juntas; sempre usar rótulo/legenda
+  // direta, nunca cor isolada, no par âmbar↔verde — ver dashboard.component).
+  --chart-good: #16a34a;
+  --chart-warning: #d97706;
+  --chart-critical: #e11d48;
+  --chart-neutral: #64748b;
+
+  --color-bg-page: #f1f5f9;
+  --color-surface: #ffffff;
+
+  --color-text-primary: #1e293b;
+  --color-text-secondary: #64748b;
+  --color-border: #e5e7eb;
+  --color-border-light: #f3f4f6;
+
+  --chip-success-bg: #dcfce7;
+  --chip-success-text: #15803d;
+  --chip-warning-bg: #fef3c7;
+  --chip-warning-text: #92400e;
+  --chip-neutral-bg: #e2e8f0;
+  --chip-neutral-text: #334155;
+
+  --banner-bg: #fffbeb;
+  --banner-border: #fde68a;
+
+  // Sidebar / shell — verde SENAR-GO (identidade visual informada pelo cliente)
+  --sidebar-bg: #0f5c4d;
+  --sidebar-icon-inactive: #9fcbbd;
+  --sidebar-icon-active: #4ade80;
+  --header-bg: #ffffff;
+  --footer-border: #e2e8f0;
+
+  // Cores de ícone de linha do card (seção 6)
+  --row-icon-1: #2563eb; // azul
+  --row-icon-2: #f97316; // laranja
+  --row-icon-3: #4f46e5; // índigo
+  --row-icon-4: #9333ea; // roxo
+  --row-icon-5: #16a34a; // verde SENAR
+  --row-icon-6: #0d9488; // teal
+  --row-icon-7: #0284c7; // sky
+  --row-icon-8: #65a30d; // lima
+
+  // Tipografia
+  --font-family-base: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  // Espaço / forma
+  --page-padding: 48px;
+  --grid-gap: 16px;
+  --section-gap: 24px;
+  --radius-form-card: 16px;
+  --radius-list-card: 12px;
+  --radius-sm: 8px;
+  --radius-pill: 9999px;
+  --shadow-card: 0 4px 6px rgba(0, 0, 0, 0.08);
+  --shadow-card-hover: 0 10px 20px rgba(0, 0, 0, 0.1);
+
+  // Layout do casco
+  --sidebar-width: 80px;
+  --header-height: 64px;
+  --footer-height: 56px;
+}
+
+// Modo escuro (ativado via [data-theme="dark"] ou prefers-color-scheme)
+@mixin dark-tokens {
+  --color-primary: #2dd4bf;
+  --color-primary-hover: #14b8a6;
+  --color-accent: #4ade80;
+  --color-accent-light: rgba(20, 83, 45, 0.4);
+  --color-warn: #ef4444;
+  --color-secondary-blue: #3b82f6;
+
+  --color-bg-page: #0f172a;
+  --color-surface: #1f2937;
+
+  --color-text-primary: #f9fafb;
+  --color-text-secondary: #9ca3af;
+  --color-border: #374151;
+  --color-border-light: #334155;
+
+  // Mesmos tons validados do modo claro — a validação da skill dataviz cobriu
+  // ambas as superfícies (light/dark) com o mesmo conjunto de cores.
+  --chart-good: #16a34a;
+  --chart-warning: #d97706;
+  --chart-critical: #e11d48;
+  --chart-neutral: #94a3b8;
+
+  --chip-success-bg: rgba(20, 83, 45, 0.4);
+  --chip-success-text: #86efac;
+  --chip-warning-bg: rgba(120, 53, 15, 0.4);
+  --chip-warning-text: #fde68a;
+  --chip-neutral-bg: #1e293b;
+  --chip-neutral-text: #cbd5e1;
+
+  --banner-bg: rgba(69, 26, 3, 0.4);
+  --banner-border: #92400e;
+
+  --sidebar-bg: #0c463b;
+  --header-bg: #1f2937;
+  --footer-border: #374151;
+}
+
+// Dark é uma opção secundária: só se aplica quando o usuário escolhe
+// explicitamente pelo alternador do shell (nunca automaticamente pelo SO).
+:root[data-theme='dark'] {
+  @include dark-tokens;
+}

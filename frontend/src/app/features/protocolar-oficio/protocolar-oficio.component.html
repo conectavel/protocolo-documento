@@ -1,0 +1,252 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>note_add</mat-icon>
+    Protocolar Ofício
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Registre a solicitação anexando o ofício correspondente e os itens desejados.
+  </p>
+</div>
+
+<!-- Seção 1 — Identificação do Solicitante -->
+<div class="po-card">
+  <div class="po-card-section-title">Identificação do Solicitante</div>
+  <div class="po-divider-gradient"></div>
+
+  @if (carregandoParceiro()) {
+    <p class="po-hint">Carregando dados do parceiro vinculado…</p>
+  } @else if (!parceiro()) {
+    <p class="po-hint po-hint--erro">
+      Não foi possível localizar o Parceiro vinculado a este Mobilizador. Verifique a
+      sincronização com o RM/ACORP.
+    </p>
+  } @else {
+    <div class="po-grid">
+      <mat-form-field appearance="outline">
+        <mat-label>Parceiro</mat-label>
+        <input matInput [value]="parceiro()?.nome" readonly />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Presidente</mat-label>
+        <input matInput [value]="parceiro()?.presidenteNome || '—'" readonly />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Mobilizador</mat-label>
+        <input matInput [value]="parceiro()?.mobilizadorNome || '—'" readonly />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Coordenador Regional</mat-label>
+        <input matInput [value]="parceiro()?.coordenadorRegionalNome || '—'" readonly />
+      </mat-form-field>
+    </div>
+  }
+</div>
+
+<!-- Seção 2 — Dados do Documento -->
+<div class="po-card">
+  <div class="po-card-section-title">Dados do Documento</div>
+  <div class="po-divider-gradient"></div>
+
+  <form [formGroup]="documentoForm" class="po-grid">
+    <mat-form-field appearance="outline" class="po-field-full">
+      <mat-label>Assunto</mat-label>
+      <input matInput formControlName="assunto" />
+      @if (documentoForm.controls.assunto.invalid && documentoForm.controls.assunto.touched) {
+        <mat-error>Informe o assunto do ofício</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Nº do Documento</mat-label>
+      <input matInput formControlName="numeroDocumento" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Município</mat-label>
+      <input matInput formControlName="municipio" />
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Data do Documento</mat-label>
+      <input matInput [matDatepicker]="pickerDoc" formControlName="dataDocumento" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
+      <mat-datepicker #pickerDoc></mat-datepicker>
+      @if (documentoForm.controls.dataDocumento.invalid && documentoForm.controls.dataDocumento.touched) {
+        <mat-error>Informe a data do documento</mat-error>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="po-field-full">
+      <mat-label>Resumo / Observações</mat-label>
+      <textarea matInput rows="4" formControlName="resumoObservacoes"></textarea>
+    </mat-form-field>
+  </form>
+
+  @if (!arquivo() || !anexoId()) {
+    <div class="po-upload">
+      <label class="po-upload__botao">
+        <mat-icon>cloud_upload</mat-icon>
+        Selecionar arquivo
+        <input type="file" accept="application/pdf" (change)="selecionarArquivo($event)" hidden />
+      </label>
+
+      @if (enviandoArquivo()) {
+        <span class="po-upload__status">
+          <mat-spinner diameter="18"></mat-spinner>
+          Enviando ofício…
+        </span>
+      }
+    </div>
+  } @else {
+    <app-pdf-viewer
+      [anexoId]="anexoId()!"
+      [nomeArquivo]="arquivo()?.name ?? 'ofício.pdf'"
+      [podeRemover]="true"
+      altura="360px"
+      (remover)="removerArquivo()"
+    ></app-pdf-viewer>
+  }
+
+  @if (erroArquivo()) {
+    <p class="po-hint po-hint--erro">{{ erroArquivo() }}</p>
+  }
+
+  <p class="po-hint">Upload do ofício em PDF é obrigatório para protocolar a solicitação.</p>
+</div>
+
+<!-- Seção 3 — Tipo de Solicitação -->
+<div class="po-card">
+  <div class="po-card-section-title">
+    <span>Tipo de Solicitação</span>
+  </div>
+  <div class="po-divider-gradient"></div>
+
+  <form [formGroup]="itemForm" class="po-grid">
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo</mat-label>
+      <mat-select formControlName="tipo">
+        @for (tipo of tiposItem; track tipo) {
+          <mat-option [value]="tipo">{{ tipoItemLabels[tipo] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    @if (tipoAtualTemTitulo) {
+      <mat-form-field appearance="outline">
+        <mat-label>Título</mat-label>
+        <input matInput formControlName="titulo" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data início</mat-label>
+        <input matInput [matDatepicker]="pickerItemInicio" formControlName="dataInicio" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerItemInicio"></mat-datepicker-toggle>
+        <mat-datepicker #pickerItemInicio></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data fim</mat-label>
+        <input matInput [matDatepicker]="pickerItemFim" formControlName="dataFim" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerItemFim"></mat-datepicker-toggle>
+        <mat-datepicker #pickerItemFim></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline" class="po-field-full">
+        <mat-label>Resumo</mat-label>
+        <textarea matInput rows="3" formControlName="resumo"></textarea>
+      </mat-form-field>
+    } @else {
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo do Evento</mat-label>
+        <input matInput formControlName="tipoEvento" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Ação/Atividade</mat-label>
+        <input matInput formControlName="acaoAtividade" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Disciplina</mat-label>
+        <input matInput formControlName="disciplina" />
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Turno</mat-label>
+        <mat-select formControlName="turno">
+          @for (turno of turnos; track turno) {
+            <mat-option [value]="turno">{{ turnoLabels[turno] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data início</mat-label>
+        <input matInput [matDatepicker]="pickerItemInicio2" formControlName="dataInicio" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerItemInicio2"></mat-datepicker-toggle>
+        <mat-datepicker #pickerItemInicio2></mat-datepicker>
+      </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Data fim</mat-label>
+        <input matInput [matDatepicker]="pickerItemFim2" formControlName="dataFim" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerItemFim2"></mat-datepicker-toggle>
+        <mat-datepicker #pickerItemFim2></mat-datepicker>
+      </mat-form-field>
+    }
+  </form>
+
+  @if (erroItem()) {
+    <p class="po-hint po-hint--erro">{{ erroItem() }}</p>
+  }
+
+  <div class="po-add-item-row">
+    <button mat-flat-button color="primary" type="button" (click)="adicionarItem()">
+      <mat-icon>add</mat-icon>
+      Adicionar item
+    </button>
+  </div>
+
+  <div class="po-itens-lista">
+    @if (itens().length === 0) {
+      <p class="po-hint">Nenhum item adicionado ainda.</p>
+    }
+    @for (item of itens(); track $index) {
+      <div class="po-nested-block">
+        <div class="po-nested-block__cabecalho">
+          <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
+          <span class="po-nested-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
+        </div>
+        @if (item.resumo) {
+          <p class="po-nested-block__linha">{{ item.resumo }}</p>
+        }
+        @if (item.disciplina) {
+          <p class="po-nested-block__linha">Disciplina: {{ item.disciplina }}</p>
+        }
+        @if (item.turno) {
+          <p class="po-nested-block__linha">Turno: {{ turnoLabels[item.turno] || item.turno }}</p>
+        }
+        <button
+          mat-stroked-button
+          color="warn"
+          type="button"
+          class="po-nested-block__remover"
+          (click)="removerItem($index)"
+        >
+          <mat-icon>delete</mat-icon>
+          Remover
+        </button>
+      </div>
+    }
+  </div>
+</div>
+
+@if (erroSalvar()) {
+  <p class="po-hint po-hint--erro po-mt-16">{{ erroSalvar() }}</p>
+}
+
+<div class="po-form-footer">
+  <button mat-flat-button color="warn" type="button" [disabled]="salvando()" (click)="cancelar()">
+    Cancelar
+  </button>
+  <button mat-flat-button color="primary" type="button" [disabled]="salvando()" (click)="salvar()">
+    @if (salvando()) {
+      <mat-spinner diameter="24" color="accent"></mat-spinner>
+    } @else {
+      <span>Salvar</span>
+    }
+  </button>
+</div>

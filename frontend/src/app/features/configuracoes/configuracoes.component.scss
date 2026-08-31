@@ -1,0 +1,75 @@
+.po-config-canal {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 4px;
+  border-bottom: 1px solid var(--color-border-light);
+  transition: background-color 0.15s ease;
+
+  &:last-child {
+    border-bottom: none;
+  }
+
+  &:hover {
+    background-color: var(--color-bg-page);
+  }
+
+  &__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  &__titulo {
+    font-weight: 500;
+    color: var(--color-text-primary);
+  }
+
+  &__descricao {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+  }
+
+  &__aviso {
+    color: var(--color-warn);
+  }
+}
+
+.po-config-tipos {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.po-config-tipo {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+
+  &:hover {
+    background-color: var(--color-bg-page);
+  }
+
+  &__texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding-top: 2px;
+  }
+
+  &__titulo {
+    font-weight: 500;
+    color: var(--color-text-primary);
+    font-size: 14px;
+  }
+
+  &__descricao {
+    font-size: 12px;
+    color: var(--color-text-secondary);
+  }
+}

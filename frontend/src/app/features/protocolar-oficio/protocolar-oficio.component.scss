@@ -1,0 +1,90 @@
+.po-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  margin-top: 8px;
+
+  &--erro {
+    color: var(--color-warn);
+  }
+}
+
+.po-upload {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+
+  &__botao {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    padding: 10px 18px;
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--color-text-primary);
+    cursor: pointer;
+    background: var(--color-surface);
+
+    &:hover {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+  }
+
+  &__status {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+
+    &--ok {
+      color: var(--color-accent);
+    }
+  }
+}
+
+.po-add-item-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+
+.po-itens-lista {
+  margin-top: 16px;
+}
+
+.po-nested-block {
+  &__cabecalho {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+
+  &__titulo {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+  }
+
+  &__linha {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    margin: 2px 0;
+  }
+
+  &__remover {
+    position: absolute;
+    right: 16px;
+    bottom: 16px;
+  }
+}
+
+.po-nested-block {
+  position: relative;
+  padding-bottom: 48px;
+}

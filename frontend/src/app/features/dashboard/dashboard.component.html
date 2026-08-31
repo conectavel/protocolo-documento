@@ -1,0 +1,219 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>insights</mat-icon>
+    Dashboard
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Volume de solicitações, atendimento e indicadores do período.
+  </p>
+</div>
+
+<div class="po-card po-dash-filtro">
+  <form [formGroup]="filtroForm" class="po-dash-filtro__form">
+    <mat-form-field appearance="outline">
+      <mat-label>Data início</mat-label>
+      <input matInput [matDatepicker]="pickerInicio" formControlName="dataInicio" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+      <mat-datepicker #pickerInicio></mat-datepicker>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Data fim</mat-label>
+      <input matInput [matDatepicker]="pickerFim" formControlName="dataFim" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerFim"></mat-datepicker-toggle>
+      <mat-datepicker #pickerFim></mat-datepicker>
+    </mat-form-field>
+    <button mat-flat-button color="primary" type="button" (click)="aplicarFiltro()">
+      <mat-icon>filter_alt</mat-icon>
+      Aplicar período
+    </button>
+  </form>
+</div>
+
+@if (carregando()) {
+  <app-loading-state mensagem="Carregando métricas…"></app-loading-state>
+} @else if (erro()) {
+  <p class="po-hint po-hint--erro">{{ erro() }}</p>
+}
+
+@if (!carregando() && !erro() && metricas(); as m) {
+  <!-- KPIs -->
+  <div class="po-dash-kpis">
+    <div class="po-dash-kpi po-dash-kpi--destaque">
+      <span class="po-dash-kpi__rotulo">Total no período</span>
+      <span class="po-dash-kpi__valor">{{ m.totalSolicitacoes }}</span>
+      @if (m.comparativoPeriodoAnterior.variacaoPercentual !== null) {
+        <span class="po-dash-kpi__delta" [class]="'po-dash-kpi__delta--' + variacaoTom()">
+          <mat-icon>{{ variacaoTom() === 'positivo' ? 'trending_up' : 'trending_down' }}</mat-icon>
+          {{ m.comparativoPeriodoAnterior.variacaoPercentual }}% vs período anterior
+        </span>
+      } @else {
+        <span class="po-dash-kpi__delta po-dash-kpi__delta--neutro">Sem período anterior comparável</span>
+      }
+    </div>
+
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Atendidas</span>
+      <span class="po-dash-kpi__valor" style="color: var(--chart-good)">{{ m.totalAtendido }}</span>
+    </div>
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Parcialmente atendidas</span>
+      <span class="po-dash-kpi__valor" style="color: var(--chart-warning)">{{ m.totalParcialmenteAtendido }}</span>
+    </div>
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Não atendidas</span>
+      <span class="po-dash-kpi__valor" style="color: var(--chart-critical)">{{ m.totalNaoAtendido }}</span>
+    </div>
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Em andamento</span>
+      <span class="po-dash-kpi__valor" style="color: var(--chart-neutral)">{{ m.totalEmAndamento }}</span>
+    </div>
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Canceladas</span>
+      <span class="po-dash-kpi__valor" style="color: var(--chart-neutral)">{{ m.totalCancelado }}</span>
+    </div>
+
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Taxa de atendimento</span>
+      <span class="po-dash-kpi__valor">
+        {{ m.taxaAtendimentoPercentual !== null ? m.taxaAtendimentoPercentual + '%' : '—' }}
+      </span>
+      <span class="po-dash-kpi__nota">entre as solicitações já concluídas</span>
+    </div>
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Ciência dentro do prazo</span>
+      <span class="po-dash-kpi__valor">
+        {{ m.slaCiencia.percentualAutomatica !== null ? (100 - m.slaCiencia.percentualAutomatica) + '%' : '—' }}
+      </span>
+      <span class="po-dash-kpi__nota">
+        {{ m.slaCiencia.automaticas }} avanço(s) automático(s) por SLA de 24h vencido
+      </span>
+    </div>
+    <div class="po-dash-kpi">
+      <span class="po-dash-kpi__rotulo">Tempo médio de ciência</span>
+      <span class="po-dash-kpi__valor">
+        {{ m.slaCiencia.tempoMedioHoras !== null ? m.slaCiencia.tempoMedioHoras + 'h' : '—' }}
+      </span>
+      <span class="po-dash-kpi__nota">do protocolo até a ciência do Regional</span>
+    </div>
+  </div>
+
+  <div class="po-dash-grid">
+    <!-- Distribuição por status -->
+    <div class="po-card">
+      <div class="po-card-section-title">Distribuição por status</div>
+      <div class="po-divider-gradient"></div>
+
+      @if (barrasStatus().length === 0) {
+        <p class="po-hint">Nenhuma solicitação no período selecionado.</p>
+      }
+      <div class="po-dash-barras">
+        @for (b of barrasStatus(); track b.chave) {
+          <div class="po-dash-barra-linha">
+            <span class="po-dash-barra-linha__rotulo">{{ b.rotulo }}</span>
+            <div class="po-dash-barra-linha__trilho">
+              <div class="po-dash-barra-linha__preenchimento" [style.width.%]="b.percentual" [style.background]="b.cor"></div>
+            </div>
+            <span class="po-dash-barra-linha__valor">{{ b.total }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Por tipo de solicitação -->
+    <div class="po-card">
+      <div class="po-card-section-title">Por tipo de solicitação</div>
+      <div class="po-divider-gradient"></div>
+
+      @if (barrasTipoItem().length === 0) {
+        <p class="po-hint">Nenhum item no período selecionado.</p>
+      }
+      <div class="po-dash-barras">
+        @for (b of barrasTipoItem(); track b.chave) {
+          <div class="po-dash-barra-linha">
+            <span class="po-dash-barra-linha__rotulo">{{ b.rotulo }}</span>
+            <div class="po-dash-barra-linha__trilho">
+              <div class="po-dash-barra-linha__preenchimento po-dash-barra-linha__preenchimento--primaria" [style.width.%]="b.percentual"></div>
+            </div>
+            <span class="po-dash-barra-linha__valor">{{ b.total }}</span>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- Evolução no período -->
+    <div class="po-card po-dash-grid__largo">
+      <div class="po-card-section-title">Evolução no período (solicitações por dia)</div>
+      <div class="po-divider-gradient"></div>
+
+      @if (serieBarras().length === 0) {
+        <p class="po-hint">Nenhuma solicitação no período selecionado.</p>
+      } @else {
+        <div class="po-dash-serie">
+          @for (dia of serieBarras(); track dia.data) {
+            <div class="po-dash-serie__coluna" [matTooltip]="dia.rotulo + ': ' + dia.total">
+              <div class="po-dash-serie__barra" [style.height.%]="dia.percentualVisivel"></div>
+              <span class="po-dash-serie__rotulo">{{ dia.rotulo }}</span>
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <!-- Por área/programa -->
+    <div class="po-card">
+      <div class="po-card-section-title">Por área/programa</div>
+      <div class="po-divider-gradient"></div>
+
+      @if (barrasArea().length === 0) {
+        <p class="po-hint">Nenhum item já direcionado a uma área no período.</p>
+      } @else {
+        <div class="po-table-container">
+          <table class="po-table">
+            <thead>
+              <tr>
+                <th>Área/Programa</th>
+                <th>Total</th>
+                <th>Atendidos</th>
+                <th>Parciais</th>
+                <th>Não atendidos</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (a of m.porArea; track a.areaProgramaId) {
+                <tr>
+                  <td>{{ a.nome }}</td>
+                  <td>{{ a.total }}</td>
+                  <td>{{ a.atendidos }}</td>
+                  <td>{{ a.parciais }}</td>
+                  <td>{{ a.naoAtendidos }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </div>
+
+    <!-- Top Parceiros -->
+    <div class="po-card">
+      <div class="po-card-section-title">Top Parceiros por volume</div>
+      <div class="po-divider-gradient"></div>
+
+      @if (barrasParceiro().length === 0) {
+        <p class="po-hint">Nenhuma solicitação no período selecionado.</p>
+      }
+      <div class="po-dash-barras">
+        @for (b of barrasParceiro(); track b.chave) {
+          <div class="po-dash-barra-linha">
+            <span class="po-dash-barra-linha__rotulo">{{ b.rotulo }}</span>
+            <div class="po-dash-barra-linha__trilho">
+              <div class="po-dash-barra-linha__preenchimento po-dash-barra-linha__preenchimento--primaria" [style.width.%]="b.percentual"></div>
+            </div>
+            <span class="po-dash-barra-linha__valor">{{ b.total }}</span>
+          </div>
+        }
+      </div>
+    </div>
+  </div>
+}

@@ -1,0 +1,84 @@
+<div class="shell">
+  <aside class="shell-sidebar">
+    <div class="shell-sidebar__logo" matTooltip="Protocolo de Ofício" matTooltipPosition="right">
+      <mat-icon>eco</mat-icon>
+    </div>
+
+    <nav class="shell-sidebar__nav">
+      @for (item of itensVisiveis(); track item.rota) {
+        <a
+          class="shell-sidebar__item"
+          [routerLink]="item.rota"
+          routerLinkActive="shell-sidebar__item--active"
+          [matTooltip]="item.rotulo"
+          matTooltipPosition="right"
+        >
+          <mat-icon>{{ item.icone }}</mat-icon>
+        </a>
+      }
+    </nav>
+  </aside>
+
+  <div class="shell-main">
+    <header class="shell-header">
+      <button
+        type="button"
+        class="shell-header__icon-btn"
+        matTooltip="Alternar menu"
+        aria-label="Alternar menu"
+      >
+        <mat-icon>menu</mat-icon>
+      </button>
+
+      <div class="shell-header__spacer"></div>
+
+      <button
+        type="button"
+        class="shell-header__icon-btn"
+        (click)="alternarTema()"
+        [matTooltip]="temaEscuro() ? 'Tema claro' : 'Tema escuro'"
+      >
+        <mat-icon [style.color]="temaEscuro() ? '#FACC15' : '#60A5FA'">
+          {{ temaEscuro() ? 'light_mode' : 'dark_mode' }}
+        </mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="shell-header__icon-btn"
+        matTooltip="Notificações"
+        aria-label="Notificações"
+      >
+        <mat-icon>notifications</mat-icon>
+      </button>
+
+      <button
+        type="button"
+        class="shell-header__avatar"
+        [matMenuTriggerFor]="menuUsuario"
+        [matTooltip]="usuario()?.nome ?? ''"
+      >
+        {{ iniciais() }}
+      </button>
+
+      <mat-menu #menuUsuario="matMenu">
+        <div class="shell-header__menu-info">
+          <strong>{{ usuario()?.nome }}</strong>
+          <span>{{ papelLabel() }}</span>
+        </div>
+        <button mat-menu-item (click)="sair()">
+          <mat-icon>logout</mat-icon>
+          <span>Sair</span>
+        </button>
+      </mat-menu>
+    </header>
+
+    <main class="shell-content">
+      <router-outlet></router-outlet>
+    </main>
+
+    <footer class="shell-footer">
+      <span>Sistema © {{ anoAtual }}</span>
+    </footer>
+  </div>
+</div>

@@ -1,0 +1,89 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>settings</mat-icon>
+    Configurações
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Escolha como e quando você quer ser avisado sobre as etapas do processo que envolvem você.
+  </p>
+</div>
+
+@if (carregando()) {
+  <app-loading-state mensagem="Carregando preferências…"></app-loading-state>
+} @else {
+  @if (erro()) {
+    <p class="po-hint po-hint--erro">{{ erro() }}</p>
+  }
+
+  <div class="po-card">
+    <div class="po-card-section-title">Canais de notificação</div>
+    <div class="po-divider-gradient"></div>
+
+    <div class="po-config-canal">
+      <div class="po-config-canal__texto">
+        <span class="po-config-canal__titulo">Notificações no sistema</span>
+        <span class="po-config-canal__descricao">
+          Avisos exibidos aqui dentro do Protocolo de Ofício.
+        </span>
+      </div>
+      <mat-slide-toggle [checked]="canalSistema()" (change)="canalSistema.set($event.checked)"></mat-slide-toggle>
+    </div>
+
+    <div class="po-config-canal">
+      <div class="po-config-canal__texto">
+        <span class="po-config-canal__titulo">Notificações push do navegador</span>
+        <span class="po-config-canal__descricao">
+          Avisos do navegador, mesmo com a aba em segundo plano.
+          @if (permissaoPush() === 'denied') {
+            <strong class="po-config-canal__aviso"> Permissão bloqueada — habilite nas configurações do site.</strong>
+          } @else if (permissaoPush() === 'nao-suportado') {
+            <strong class="po-config-canal__aviso"> Não suportado neste navegador.</strong>
+          }
+        </span>
+      </div>
+      <mat-slide-toggle
+        [checked]="canalPush()"
+        [disabled]="permissaoPush() === 'nao-suportado'"
+        (change)="alternarPush($event.checked)"
+      ></mat-slide-toggle>
+    </div>
+  </div>
+
+  <div class="po-card">
+    <div class="po-card-section-title">
+      Eventos que quero receber — {{ usuario()?.nome }}
+    </div>
+    <div class="po-divider-gradient"></div>
+
+    @if (tiposDisponiveis().length === 0) {
+      <p class="po-hint">Não há eventos de notificação configurados para o seu papel.</p>
+    }
+
+    <div class="po-config-tipos">
+      @for (tipo of tiposDisponiveis(); track tipo.codigo) {
+        <label class="po-config-tipo">
+          <mat-checkbox
+            [checked]="tiposAtivos().has(tipo.codigo)"
+            (change)="alternarTipo(tipo.codigo, $event.checked)"
+          ></mat-checkbox>
+          <div class="po-config-tipo__texto">
+            <span class="po-config-tipo__titulo">{{ tipo.titulo }}</span>
+            <span class="po-config-tipo__descricao">{{ tipo.descricao }}</span>
+          </div>
+        </label>
+      }
+    </div>
+  </div>
+
+  <div class="po-form-footer">
+    <button mat-flat-button color="primary" [disabled]="salvando()" (click)="salvar()">
+      @if (salvando()) {
+        <mat-icon>hourglass_empty</mat-icon>
+      } @else {
+        <mat-icon>save</mat-icon>
+      }
+      Salvar preferências
+    </button>
+  </div>
+}
