@@ -23,6 +23,14 @@ export class PreferenciaNotificacao {
   @Column({ name: 'canal_push', default: false })
   canalPush: boolean;
 
+  /**
+   * E-mail (para o endereço cadastrado do usuário). Guarda só a preferência —
+   * o disparo automático de e-mails a partir de eventos do backend ainda não
+   * está implementado (precisa de um provedor de SMTP configurado).
+   */
+  @Column({ name: 'canal_email', default: false })
+  canalEmail: boolean;
+
   /** Códigos dos tipos de evento (ver notificacao-catalogo.ts) que o usuário quer receber. */
   @Column({ name: 'tipos_ativos', type: 'jsonb', default: () => "'[]'" })
   tiposAtivos: string[];

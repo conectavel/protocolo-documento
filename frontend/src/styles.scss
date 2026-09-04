@@ -18,6 +18,39 @@
 }
 
 // -------------------------------------------------------------
+// Material Icons hospedada localmente — evita que os ícones apareçam
+// como texto ("description", "check_circle") quando o link externo do
+// Google Fonts falha ou é bloqueado na rede de quem está testando
+// (ex.: acesso via túnel de fora da rede local).
+// -------------------------------------------------------------
+@font-face {
+  font-family: 'Material Icons';
+  font-style: normal;
+  font-weight: 400;
+  font-display: block;
+  src:
+    url('assets/fonts/material-icons/material-icons.woff2') format('woff2'),
+    url('assets/fonts/material-icons/material-icons.woff') format('woff');
+}
+
+.material-icons {
+  font-family: 'Material Icons';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: 'liga';
+}
+
+// -------------------------------------------------------------
 // Altura e arredondamento consistentes entre botões e campos de
 // formulário (outline) — para os dois ficarem alinhados visualmente
 // quando aparecem lado a lado (ex.: busca + botão de ação).
@@ -39,7 +72,10 @@
     border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   }
 
-  &:not(.po-search-field) .mat-mdc-text-field-wrapper {
+  // Exclui campos com <textarea>: forçar 44px espremeria o textarea contra
+  // sua própria caixa, e como o wrapper tem overflow visível, o conteúdo
+  // (rows="4"+) acaba vazando por cima do que vem depois no layout.
+  &:not(.po-search-field):not(:has(textarea)) .mat-mdc-text-field-wrapper {
     height: 44px;
   }
 }
@@ -357,6 +393,11 @@ a {
     background: var(--chip-neutral-bg);
     color: var(--chip-neutral-text);
   }
+
+  &--info {
+    background: var(--chip-info-bg);
+    color: var(--chip-info-text);
+  }
 }
 
 // -------------------------------------------------------------
@@ -549,4 +590,23 @@ a {
 
 .po-mt-16 {
   margin-top: 16px;
+}
+
+// -------------------------------------------------------------
+// Diálogos — cantos mais arredondados e entrada suave em todo o app
+// -------------------------------------------------------------
+.mat-mdc-dialog-container .mdc-dialog__surface {
+  border-radius: var(--radius-form-card) !important;
+  animation: po-dialog-entra 0.2s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes po-dialog-entra {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }

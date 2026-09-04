@@ -4,10 +4,12 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AnaliseAssessoriaRequest,
+  AnexoProcesso,
   CriarSolicitacaoRequest,
   DesignarCoordenadorRequest,
   DespachoSuperintendenteRequest,
   DirecionamentoDiretorRequest,
+  EditarItemRequest,
   EncaminharItemRequest,
   ListaSolicitacoesFiltro,
   Pagina,
@@ -67,12 +69,10 @@ export class SolicitacoesService {
     );
   }
 
-  direcionarDiretor(
-    solicitacaoId: string,
-    payload: DirecionamentoDiretorRequest
-  ): Observable<Solicitacao> {
+  /** HU05 — direciona UM item específico; cada item de uma solicitação pode ir para uma Área diferente. */
+  direcionarItem(itemId: string, payload: DirecionamentoDiretorRequest): Observable<Solicitacao> {
     return this.http.post<Solicitacao>(
-      `${this.baseUrl}/solicitacoes/${solicitacaoId}/direcionamento-diretor`,
+      `${this.baseUrl}/solicitacoes/itens/${itemId}/direcionamento-diretor`,
       payload
     );
   }
@@ -101,6 +101,11 @@ export class SolicitacoesService {
     );
   }
 
+  /** O Coordenador corrige os campos preenchidos pelo Mobilizador/Presidente — o original vira histórico. */
+  editarItem(itemId: string, payload: EditarItemRequest): Observable<Solicitacao> {
+    return this.http.post<Solicitacao>(`${this.baseUrl}/solicitacoes/itens/${itemId}/editar`, payload);
+  }
+
   registrarDevolutiva(
     itemId: string,
     payload: RegistrarDevolutivaRequest
@@ -114,6 +119,12 @@ export class SolicitacoesService {
   buscarHistorico(solicitacaoId: string): Observable<Tramitacao[]> {
     return this.http.get<Tramitacao[]>(
       `${this.baseUrl}/solicitacoes/${solicitacaoId}/historico`
+    );
+  }
+
+  buscarAnexos(solicitacaoId: string): Observable<AnexoProcesso[]> {
+    return this.http.get<AnexoProcesso[]>(
+      `${this.baseUrl}/solicitacoes/${solicitacaoId}/anexos`
     );
   }
 }

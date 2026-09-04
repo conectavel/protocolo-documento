@@ -152,7 +152,10 @@
   &__form {
     display: flex;
     flex-direction: column;
-    gap: 4px;
+    // Mesmo espaçamento entre campos usado no resto do sistema (--grid-gap,
+    // ver .po-grid em styles.scss) — o valor anterior (4px) deixava os
+    // campos colados, fora do padrão interno.
+    gap: var(--grid-gap);
   }
 
   &__erro {

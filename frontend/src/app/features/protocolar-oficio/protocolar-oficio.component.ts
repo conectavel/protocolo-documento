@@ -1,16 +1,19 @@
-import { ChangeDetectionStrategy, Component, OnInit, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
 import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatAutocompleteModule } from '@angular/material/autocomplete';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 
+import { AlertaService } from '../../core/services/alerta.service';
 import { AuthService } from '../../core/services/auth.service';
 import { AnexosService } from '../../core/services/anexos.service';
 import { ParceirosService } from '../../core/services/parceiros.service';
@@ -18,6 +21,9 @@ import { SolicitacoesService } from '../../core/services/solicitacoes.service';
 import { ItemSolicitacao, Parceiro, TIPO_ITEM_LABELS, TipoItem } from '../../core/models';
 import { PdfViewerComponent } from '../../shared/components/pdf-viewer/pdf-viewer.component';
 import { CATALOGO_TIPOS_EVENTO } from '../../core/catalogos/catalogo-tipos-evento';
+import {
+  ConfirmarAcaoDialogComponent,
+} from '../../shared/components/confirmar-acao-dialog/confirmar-acao-dialog.component';
 
 const LIMITE_OPCOES_AUTOCOMPLETE = 60;
 
@@ -45,6 +51,7 @@ const TIPOS_COM_TITULO: TipoItem[] = ['PATROCINIO', 'SOLICITACAO_ITENS', 'CONVIT
     MatInputModule,
     MatProgressSpinnerModule,
     MatSelectModule,
+    MatTooltipModule,
     PdfViewerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
@@ -58,9 +65,17 @@ export class ProtocolarOficioComponent implements OnInit {
   private readonly parceirosService = inject(ParceirosService);
   private readonly solicitacoesService = inject(SolicitacoesService);
   private readonly router = inject(Router);
+  private readonly dialog = inject(MatDialog);
+  private readonly alerta = inject(AlertaService);
 
   readonly tiposItem: TipoItem[] = ['ACAO_ATIVIDADE', 'PATROCINIO', 'SOLICITACAO_ITENS', 'CONVITE'];
   readonly tipoItemLabels = TIPO_ITEM_LABELS;
+  readonly tipoItemIcones: Record<TipoItem, string> = {
+    ACAO_ATIVIDADE: 'event',
+    PATROCINIO: 'volunteer_activism',
+    SOLICITACAO_ITENS: 'inventory_2',
+    CONVITE: 'mail',
+  };
   readonly turnos = ['MANHA', 'TARDE', 'NOITE', 'INTEGRAL'];
   readonly turnoLabels: Record<string, string> = {
     MANHA: 'Manhã',
@@ -83,9 +98,12 @@ export class ProtocolarOficioComponent implements OnInit {
   readonly anexoId = signal<string | null>(null);
   readonly enviandoArquivo = signal(false);
   readonly erroArquivo = signal<string | null>(null);
+  readonly gerandoModelo = signal(false);
 
   readonly itens = signal<ItemSolicitacao[]>([]);
   readonly erroItem = signal<string | null>(null);
+  /** Índice do item em edição na lista, ou null quando "Adicionar item" cria um novo. */
+  readonly editandoIndice = signal<number | null>(null);
 
   readonly salvando = signal(false);
   readonly erroSalvar = signal<string | null>(null);
@@ -96,7 +114,15 @@ export class ProtocolarOficioComponent implements OnInit {
     dataDocumento: [null as Date | null, Validators.required],
     municipio: [''],
     resumoObservacoes: [''],
+    // Só usado quando quem está logado é o Presidente do Sindicato — o
+    // Mobilizador sempre protocola como ele mesmo (usuario.mobilizadorId).
+    // 1 Parceiro tem 1 ou mais Mobilizadores, então o Presidente precisa
+    // escolher em nome de qual deles está protocolando.
+    mobilizadorId: [''],
   });
+
+  readonly usuario = this.auth.usuario;
+  readonly ehPresidente = computed(() => this.auth.papel() === 'PRESIDENTE');
 
   readonly itemForm = this.fb.nonNullable.group({
     tipo: ['ACAO_ATIVIDADE' as TipoItem, Validators.required],
@@ -108,6 +134,13 @@ export class ProtocolarOficioComponent implements OnInit {
     resumo: [''],
     dataInicio: [null as Date | null],
     dataFim: [null as Date | null],
+    // Solicitação de Itens
+    quantidade: [null as number | null],
+    // Convite
+    hora: [''],
+    local: [''],
+    responsavel: [''],
+    telefone: [''],
   });
 
   ngOnInit(): void {
@@ -159,6 +192,44 @@ export class ProtocolarOficioComponent implements OnInit {
     });
   }
 
+  /**
+   * 1 Parceiro tem 1 ou mais Mobilizadores — o Mobilizador logado sempre
+   * protocola em nome dele mesmo; o Presidente escolhe no formulário em nome
+   * de qual Mobilizador do seu Parceiro está protocolando.
+   */
+  private resolverMobilizadorId(idSelecionado: string): string | null {
+    const usuario = this.auth.usuario();
+    if (usuario?.papel === 'MOBILIZADOR') {
+      return usuario.mobilizadorId ?? null;
+    }
+    return idSelecionado || null;
+  }
+
+  private resolverMobilizadorNome(idSelecionado: string): string | undefined {
+    const usuario = this.auth.usuario();
+    if (usuario?.papel === 'MOBILIZADOR') {
+      return usuario.nome;
+    }
+    return this.parceiro()?.mobilizadores?.find((m) => m.id === idSelecionado)?.nome;
+  }
+
+  /** Bloqueia letras/símbolos no campo Data do Documento — só dígitos e "/" passam. */
+  bloquearTeclasInvalidasNaData(evento: KeyboardEvent): void {
+    const teclasPermitidas = [
+      'Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home', 'End', 'Enter',
+    ];
+    if (teclasPermitidas.includes(evento.key) || evento.ctrlKey || evento.metaKey) {
+      return;
+    }
+    if (!/^[0-9/]$/.test(evento.key)) {
+      evento.preventDefault();
+    }
+  }
+
+  definirDataDocumentoHoje(): void {
+    this.documentoForm.controls.dataDocumento.setValue(new Date());
+  }
+
   selecionarArquivo(evento: Event): void {
     const input = evento.target as HTMLInputElement;
     const arquivo = input.files?.[0] ?? null;
@@ -193,6 +264,59 @@ export class ProtocolarOficioComponent implements OnInit {
     this.erroArquivo.set(null);
   }
 
+  /**
+   * Alternativa ao upload manual: gera um PDF de ofício padrão a partir do
+   * que já foi preenchido (Parceiro/Presidente/Mobilizador resolvidos do RM +
+   * Dados do Documento + Itens), para quando o Parceiro/Sindicato não tem um
+   * documento próprio pronto para anexar.
+   */
+  gerarOficioComItens(): void {
+    this.erroArquivo.set(null);
+
+    const valoresDocumento = this.documentoForm.getRawValue();
+    if (!valoresDocumento.assunto) {
+      this.erroArquivo.set('Preencha o Assunto antes de gerar o ofício.');
+      return;
+    }
+    if (this.itens().length === 0) {
+      this.erroArquivo.set('Adicione ao menos um item antes de gerar o ofício.');
+      return;
+    }
+
+    const parceiro = this.parceiro();
+    this.gerandoModelo.set(true);
+
+    this.anexosService
+      .gerarModelo({
+        parceiroSigla: parceiro?.nome,
+        presidenteNome: parceiro?.presidenteNome,
+        mobilizadorNome: this.resolverMobilizadorNome(valoresDocumento.mobilizadorId),
+        cnpj: parceiro?.cnpj,
+        endereco: parceiro?.endereco,
+        telefone: parceiro?.telefone,
+        coordenadorRegionalNome: parceiro?.coordenadorRegionalNome,
+        municipio: valoresDocumento.municipio || undefined,
+        assunto: valoresDocumento.assunto,
+        numeroDocumento: valoresDocumento.numeroDocumento || undefined,
+        dataDocumento: valoresDocumento.dataDocumento
+          ? valoresDocumento.dataDocumento.toISOString()
+          : undefined,
+        resumoObservacoes: valoresDocumento.resumoObservacoes || undefined,
+        itens: this.itens(),
+      })
+      .subscribe({
+        next: (anexo) => {
+          this.arquivo.set(null);
+          this.anexoId.set(anexo.id);
+          this.gerandoModelo.set(false);
+        },
+        error: () => {
+          this.gerandoModelo.set(false);
+          this.erroArquivo.set('Não foi possível gerar o ofício. Tente novamente ou anexe um PDF.');
+        },
+      });
+  }
+
   adicionarItem(): void {
     const valores = this.itemForm.getRawValue();
     this.erroItem.set(null);
@@ -202,8 +326,53 @@ export class ProtocolarOficioComponent implements OnInit {
         this.erroItem.set('Informe o título do item.');
         return;
       }
-    } else if (!valores.acaoAtividade) {
-      this.erroItem.set('Informe a Ação/Atividade.');
+      if (valores.tipo === 'SOLICITACAO_ITENS' && !valores.quantidade) {
+        this.erroItem.set('Informe a quantidade.');
+        return;
+      }
+      if (valores.tipo === 'CONVITE') {
+        if (!valores.hora) {
+          this.erroItem.set('Informe o horário do convite.');
+          return;
+        }
+        if (!valores.local) {
+          this.erroItem.set('Informe o Local.');
+          return;
+        }
+        if (!valores.responsavel) {
+          this.erroItem.set('Informe o Responsável.');
+          return;
+        }
+        if (!valores.telefone) {
+          this.erroItem.set('Informe o Telefone/WhatsApp do responsável.');
+          return;
+        }
+      }
+    } else {
+      if (!valores.tipoEvento) {
+        this.erroItem.set('Selecione o Tipo do Evento.');
+        return;
+      }
+      if (!valores.acaoAtividade) {
+        this.erroItem.set('Informe a Ação/Atividade.');
+        return;
+      }
+      if (!valores.turno) {
+        this.erroItem.set('Selecione o Turno.');
+        return;
+      }
+      if (!valores.dataInicio) {
+        this.erroItem.set('Informe a Data Início.');
+        return;
+      }
+      if (!valores.dataFim) {
+        this.erroItem.set('Informe a Data Fim.');
+        return;
+      }
+    }
+
+    if (valores.dataInicio && valores.dataFim && valores.dataFim.getTime() < valores.dataInicio.getTime()) {
+      this.erroItem.set('A Data Fim não pode ser anterior à Data Início.');
       return;
     }
 
@@ -212,7 +381,19 @@ export class ProtocolarOficioComponent implements OnInit {
       dataInicio: valores.dataInicio ? valores.dataInicio.toISOString() : undefined,
       dataFim: valores.dataFim ? valores.dataFim.toISOString() : undefined,
       ...(this.tipoAtualTemTitulo
-        ? { titulo: valores.titulo, resumo: valores.resumo }
+        ? {
+            titulo: valores.titulo,
+            resumo: valores.resumo,
+            ...(valores.tipo === 'SOLICITACAO_ITENS' ? { quantidade: valores.quantidade ?? undefined } : {}),
+            ...(valores.tipo === 'CONVITE'
+              ? {
+                  hora: valores.hora,
+                  local: valores.local,
+                  responsavel: valores.responsavel,
+                  telefone: valores.telefone,
+                }
+              : {}),
+          }
         : {
             tipoEvento: valores.tipoEvento,
             acaoAtividade: valores.acaoAtividade,
@@ -221,7 +402,14 @@ export class ProtocolarOficioComponent implements OnInit {
           }),
     };
 
-    this.itens.update((lista) => [...lista, item]);
+    const indiceEdicao = this.editandoIndice();
+    if (indiceEdicao !== null) {
+      this.itens.update((lista) => lista.map((atual, i) => (i === indiceEdicao ? item : atual)));
+      this.editandoIndice.set(null);
+    } else {
+      this.itens.update((lista) => [...lista, item]);
+    }
+
     this.itemForm.reset({
       tipo: valores.tipo,
       tipoEvento: '',
@@ -232,15 +420,88 @@ export class ProtocolarOficioComponent implements OnInit {
       resumo: '',
       dataInicio: null,
       dataFim: null,
+      quantidade: null,
+      hora: '',
+      local: '',
+      responsavel: '',
+      telefone: '',
+    });
+  }
+
+  /** Carrega um item já adicionado de volta no formulário para edição no lugar. */
+  editarItem(indice: number): void {
+    const item = this.itens()[indice];
+    if (!item) return;
+
+    this.editandoIndice.set(indice);
+    this.erroItem.set(null);
+    this.itemForm.reset({
+      tipo: item.tipo,
+      tipoEvento: item.tipoEvento ?? '',
+      acaoAtividade: item.acaoAtividade ?? '',
+      disciplina: item.disciplina ?? '',
+      turno: item.turno ?? '',
+      titulo: item.titulo ?? '',
+      resumo: item.resumo ?? '',
+      dataInicio: item.dataInicio ? new Date(item.dataInicio) : null,
+      dataFim: item.dataFim ? new Date(item.dataFim) : null,
+      quantidade: item.quantidade ?? null,
+      hora: item.hora ?? '',
+      local: item.local ?? '',
+      responsavel: item.responsavel ?? '',
+      telefone: item.telefone ?? '',
+    });
+  }
+
+  cancelarEdicaoItem(): void {
+    this.editandoIndice.set(null);
+    this.erroItem.set(null);
+    this.itemForm.reset({
+      tipo: 'ACAO_ATIVIDADE',
+      tipoEvento: '',
+      acaoAtividade: '',
+      disciplina: '',
+      turno: '',
+      titulo: '',
+      resumo: '',
+      dataInicio: null,
+      dataFim: null,
+      quantidade: null,
+      hora: '',
+      local: '',
+      responsavel: '',
+      telefone: '',
     });
   }
 
   removerItem(indice: number): void {
     this.itens.update((lista) => lista.filter((_, i) => i !== indice));
+
+    const emEdicao = this.editandoIndice();
+    if (emEdicao === indice) {
+      this.cancelarEdicaoItem();
+    } else if (emEdicao !== null && emEdicao > indice) {
+      this.editandoIndice.set(emEdicao - 1);
+    }
   }
 
   cancelar(): void {
-    this.router.navigate(['/painel']);
+    const ref = this.dialog.open(ConfirmarAcaoDialogComponent, {
+      data: {
+        titulo: 'Cancelar este protocolo?',
+        mensagem: 'As informações preenchidas até agora serão perdidas e não ficam salvas em nenhum lugar.',
+        rotuloConfirmar: 'Sim, cancelar',
+        corConfirmar: 'warn',
+        icone: 'delete_outline',
+      },
+      width: '420px',
+    });
+
+    ref.afterClosed().subscribe((confirmado) => {
+      if (confirmado) {
+        this.router.navigate(['/painel']);
+      }
+    });
   }
 
   salvar(): void {
@@ -256,23 +517,65 @@ export class ProtocolarOficioComponent implements OnInit {
       return;
     }
     if (this.itens().length === 0) {
-      this.erroSalvar.set('Adicione ao menos um item de solicitação.');
+      this.erroSalvar.set('Adicione ao menos um item de solicitação antes de protocolar.');
       return;
     }
 
     const parceiro = this.parceiro();
-    if (!parceiro?.mobilizadorId) {
-      this.erroSalvar.set('Não foi possível identificar o parceiro do mobilizador logado.');
+    if (!parceiro) {
+      this.erroSalvar.set('Não foi possível identificar o Parceiro do usuário logado.');
       return;
     }
 
     const valoresDocumento = this.documentoForm.getRawValue();
+    const mobilizadorId = this.resolverMobilizadorId(valoresDocumento.mobilizadorId);
+    if (!mobilizadorId) {
+      this.erroSalvar.set('Selecione em nome de qual Mobilizador esta solicitação está sendo protocolada.');
+      return;
+    }
+
+    const ref = this.dialog.open(ConfirmarAcaoDialogComponent, {
+      data: {
+        titulo: 'Revise antes de protocolar',
+        mensagem: 'Confira se as informações abaixo estão corretas antes de confirmar.',
+        rotuloConfirmar: 'Protocolar Ofício',
+        corConfirmar: 'primary',
+        icone: 'fact_check',
+        resumo: [
+          { rotulo: 'Assunto', valor: valoresDocumento.assunto },
+          { rotulo: 'Mobilizador', valor: this.resolverMobilizadorNome(valoresDocumento.mobilizadorId) || '—' },
+          { rotulo: 'Município', valor: valoresDocumento.municipio || '—' },
+          {
+            rotulo: 'Data do Documento',
+            valor: valoresDocumento.dataDocumento
+              ? valoresDocumento.dataDocumento.toLocaleDateString('pt-BR')
+              : '—',
+          },
+          { rotulo: 'Itens', valor: `${this.itens().length}` },
+        ],
+        avisoNotificacao: true,
+      },
+      width: '460px',
+    });
+
+    ref.afterClosed().subscribe((confirmado) => {
+      if (confirmado) {
+        this.enviarSolicitacao(parceiro.id, mobilizadorId, valoresDocumento);
+      }
+    });
+  }
+
+  private enviarSolicitacao(
+    parceiroId: string,
+    mobilizadorId: string,
+    valoresDocumento: ReturnType<typeof this.documentoForm.getRawValue>
+  ): void {
     this.salvando.set(true);
 
     this.solicitacoesService
       .criar({
-        parceiroId: parceiro.id,
-        mobilizadorId: parceiro.mobilizadorId,
+        parceiroId,
+        mobilizadorId,
         assunto: valoresDocumento.assunto,
         numeroDocumento: valoresDocumento.numeroDocumento || undefined,
         dataDocumento: valoresDocumento.dataDocumento
@@ -286,11 +589,14 @@ export class ProtocolarOficioComponent implements OnInit {
       .subscribe({
         next: (solicitacao) => {
           this.salvando.set(false);
+          this.alerta.sucesso('Ofício protocolado com sucesso!');
           this.router.navigate(['/solicitacoes', solicitacao.id]);
         },
         error: () => {
           this.salvando.set(false);
-          this.erroSalvar.set('Não foi possível protocolar o ofício. Tente novamente.');
+          const mensagem = 'Não foi possível protocolar o ofício. Tente novamente.';
+          this.erroSalvar.set(mensagem);
+          this.alerta.erro(mensagem);
         },
       });
   }

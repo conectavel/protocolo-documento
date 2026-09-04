@@ -2,8 +2,8 @@ import { v4 as uuid } from 'uuid';
 
 /**
  * Repositório em memória compatível com o subconjunto de `Repository<T>` do TypeORM usado
- * pela camada de domínio (`create`, `save`, `find`, `findOne`). Permite testar a máquina de
- * estados sem depender de um banco de dados real.
+ * pela camada de domínio (`create`, `save`, `update`, `find`, `findOne`, `count`). Permite
+ * testar a máquina de estados sem depender de um banco de dados real.
  */
 export class FakeRepository<T extends { id?: string }> {
   private readonly registros = new Map<string, T>();
@@ -25,6 +25,14 @@ export class FakeRepository<T extends { id?: string }> {
     }
     this.registros.set(entidade.id, entidade);
     return entidade;
+  }
+
+  async update(id: string, partial: Partial<T>): Promise<any> {
+    const registro = this.registros.get(id);
+    if (registro) {
+      Object.assign(registro, partial);
+    }
+    return { affected: registro ? 1 : 0 };
   }
 
   async findOne(options: { where: Partial<T> }): Promise<T | null> {

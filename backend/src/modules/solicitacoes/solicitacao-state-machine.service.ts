@@ -12,7 +12,8 @@ import {
   StatusMacro,
 } from '../../common/enums/solicitacao.enum';
 import { UsuarioAutenticado } from '../../common/guards/jwt-auth.guard';
-import { RegistrarDevolutivaDto } from './dto/transicoes.dto';
+import { EditarItemDto, RegistrarDevolutivaDto } from './dto/transicoes.dto';
+import { NotificacoesService } from '../notificacoes/notificacoes.service';
 
 const FINALIZADOS: StatusItem[] = [
   StatusItem.ATENDIDO,
@@ -34,6 +35,7 @@ export class SolicitacaoStateMachineService {
     @InjectRepository(ItemSolicitacao) private readonly itemRepo: Repository<ItemSolicitacao>,
     @InjectRepository(Tramitacao) private readonly tramitacaoRepo: Repository<Tramitacao>,
     @InjectRepository(Devolutiva) private readonly devolutivaRepo: Repository<Devolutiva>,
+    private readonly notificacoes: NotificacoesService,
   ) {}
 
   // ---------------------------------------------------------------- HU02
@@ -45,7 +47,12 @@ export class SolicitacaoStateMachineService {
     solicitacao.statusMacro = StatusMacro.EM_ANALISE_ASSESSORIA;
     solicitacao.etapaAtual = 'Análise da Assessoria';
 
-    await this.solicitacaoRepo.save(solicitacao);
+    await this.solicitacaoRepo.update(solicitacao.id, {
+      dataCienciaRegional: solicitacao.dataCienciaRegional,
+      cienciaAutomatica: solicitacao.cienciaAutomatica,
+      statusMacro: solicitacao.statusMacro,
+      etapaAtual: solicitacao.etapaAtual,
+    });
     await this.registrarTramitacao(solicitacao, {
       deEtapa: 'Análise do Regional',
       paraEtapa: 'Análise da Assessoria',
@@ -53,6 +60,7 @@ export class SolicitacaoStateMachineService {
       usuario,
       motivo: automatica ? 'Prazo de 24h para ciência expirado — avanço automático.' : undefined,
     });
+    await this.notificacoes.notificarAssessoria(solicitacao);
   }
 
   // ---------------------------------------------------------------- HU03
@@ -68,13 +76,18 @@ export class SolicitacaoStateMachineService {
     if (decisao === 'APROVAR') {
       solicitacao.statusMacro = StatusMacro.EM_DESPACHO;
       solicitacao.etapaAtual = 'Superintendência — Despacho';
-      await this.solicitacaoRepo.save(solicitacao);
+      await this.solicitacaoRepo.update(solicitacao.id, {
+        statusMacro: solicitacao.statusMacro,
+        etapaAtual: solicitacao.etapaAtual,
+      });
       await this.registrarTramitacao(solicitacao, {
         deEtapa,
         paraEtapa: solicitacao.etapaAtual,
         acao: AcaoTramitacao.APROVAR,
         usuario,
+        motivo,
       });
+      await this.notificacoes.notificarSuperintendente(solicitacao);
       return;
     }
 
@@ -82,7 +95,11 @@ export class SolicitacaoStateMachineService {
       solicitacao.statusMacro = StatusMacro.DEVOLVIDO_AJUSTE;
       solicitacao.etapaAtual = 'Aguardando ajuste do Mobilizador';
       solicitacao.motivoDevolucaoOuRecusa = motivo ?? null;
-      await this.solicitacaoRepo.save(solicitacao);
+      await this.solicitacaoRepo.update(solicitacao.id, {
+        statusMacro: solicitacao.statusMacro,
+        etapaAtual: solicitacao.etapaAtual,
+        motivoDevolucaoOuRecusa: solicitacao.motivoDevolucaoOuRecusa,
+      });
       await this.registrarTramitacao(solicitacao, {
         deEtapa,
         paraEtapa: solicitacao.etapaAtual,
@@ -90,6 +107,11 @@ export class SolicitacaoStateMachineService {
         usuario,
         motivo,
       });
+      await this.notificacoes.notificarMobilizadorEPresidente(
+        solicitacao,
+        'SOLICITACAO_DEVOLVIDA_AJUSTE',
+        motivo ? `Motivo: ${motivo}` : undefined,
+      );
       return;
     }
 
@@ -97,7 +119,11 @@ export class SolicitacaoStateMachineService {
     solicitacao.statusMacro = StatusMacro.CANCELADO;
     solicitacao.etapaAtual = 'Encerrado — Recusado pela Assessoria';
     solicitacao.motivoDevolucaoOuRecusa = motivo ?? null;
-    await this.solicitacaoRepo.save(solicitacao);
+    await this.solicitacaoRepo.update(solicitacao.id, {
+      statusMacro: solicitacao.statusMacro,
+      etapaAtual: solicitacao.etapaAtual,
+      motivoDevolucaoOuRecusa: solicitacao.motivoDevolucaoOuRecusa,
+    });
     await this.registrarTramitacao(solicitacao, {
       deEtapa,
       paraEtapa: solicitacao.etapaAtual,
@@ -105,6 +131,11 @@ export class SolicitacaoStateMachineService {
       usuario,
       motivo,
     });
+    await this.notificacoes.notificarMobilizadorEPresidente(
+      solicitacao,
+      'DEVOLUTIVA_FINAL',
+      `Sua solicitação foi recusada pela Assessoria.${motivo ? ` Motivo: ${motivo}` : ''}`,
+    );
   }
 
   /** Mobilizador reenvia após ajuste — reinicia o ciclo a partir da ciência regional. */
@@ -118,80 +149,104 @@ export class SolicitacaoStateMachineService {
     solicitacao.prazoCienciaRegional = new Date(Date.now() + 24 * 60 * 60 * 1000);
     solicitacao.motivoDevolucaoOuRecusa = null;
 
-    await this.solicitacaoRepo.save(solicitacao);
+    await this.solicitacaoRepo.update(solicitacao.id, {
+      statusMacro: solicitacao.statusMacro,
+      etapaAtual: solicitacao.etapaAtual,
+      dataCienciaRegional: solicitacao.dataCienciaRegional,
+      cienciaAutomatica: solicitacao.cienciaAutomatica,
+      prazoCienciaRegional: solicitacao.prazoCienciaRegional,
+      motivoDevolucaoOuRecusa: solicitacao.motivoDevolucaoOuRecusa,
+    });
     await this.registrarTramitacao(solicitacao, {
       deEtapa: 'Aguardando ajuste do Mobilizador',
       paraEtapa: 'Análise do Regional',
       acao: AcaoTramitacao.REENVIAR_APOS_AJUSTE,
       usuario,
     });
+    await this.notificacoes.notificarCoordenadorRegional(solicitacao);
   }
 
   // ---------------------------------------------------------------- HU04
+  /**
+   * O Superintendente pode escolher mais de um Diretor responsável por esta
+   * solicitação — cada um deles poderá, depois, direcionar os itens que
+   * pertencem ao time dele para a Área/Programa correta (bifurcação por item,
+   * ver `direcionarItemParaArea`). Só quem estiver em `diretoresIds` poderá agir.
+   */
   async despacharSuperintendente(
     solicitacao: Solicitacao,
     usuario: UsuarioAutenticado,
     diretoriaDestino: 'EDUCACIONAL',
+    diretoresIds: string[],
   ) {
     this.assertStatus(solicitacao, StatusMacro.EM_DESPACHO);
     const deEtapa = solicitacao.etapaAtual;
 
     solicitacao.statusMacro = StatusMacro.EM_EXECUCAO;
     solicitacao.etapaAtual = 'Diretor Educacional — Direcionamento';
+    solicitacao.diretoresDesignadosIds = diretoresIds;
 
-    await this.solicitacaoRepo.save(solicitacao);
+    await this.solicitacaoRepo.update(solicitacao.id, {
+      statusMacro: solicitacao.statusMacro,
+      etapaAtual: solicitacao.etapaAtual,
+      diretoresDesignadosIds: solicitacao.diretoresDesignadosIds,
+    });
     await this.registrarTramitacao(solicitacao, {
       deEtapa,
       paraEtapa: solicitacao.etapaAtual,
       acao: AcaoTramitacao.DESPACHAR,
       usuario,
-      motivo: `Diretoria destino: ${diretoriaDestino}`,
+      motivo: `Diretoria destino: ${diretoriaDestino} · ${diretoresIds.length} diretor(es) designado(s)`,
     });
+    await this.notificacoes.notificarDiretores(solicitacao, diretoresIds);
   }
 
   // ---------------------------------------------------------------- HU05
   /**
-   * Direciona a solicitação (e todo item ainda sem área definida) para a Área/Programa.
-   * Se `coordenadorId` for informado, o Diretor já designa diretamente o coordenador
-   * (pulando a etapa do Gestor); caso contrário, a solicitação aguarda o Gestor (HU06).
+   * Direciona UM item específico para a Área/Programa — cada item de uma mesma
+   * solicitação pode ir para uma área diferente (bifurcação), cada um roteado
+   * pelo Diretor responsável pelo respectivo time. Se `coordenadorId` for
+   * informado, o Diretor já designa diretamente o coordenador daquele item
+   * (pulando a etapa do Gestor); caso contrário, o item aguarda o Gestor (HU06).
    */
-  async direcionarParaArea(
+  async direcionarItemParaArea(
+    item: ItemSolicitacao,
     solicitacao: Solicitacao,
     usuario: UsuarioAutenticado,
     areaProgramaId: string,
     coordenadorId: string | undefined,
     nomeArea: string,
+    observacao?: string,
   ) {
     this.assertStatus(solicitacao, StatusMacro.EM_EXECUCAO);
-    const deEtapa = solicitacao.etapaAtual;
 
-    solicitacao.areaProgramaId = areaProgramaId;
-    solicitacao.etapaAtual = coordenadorId
-      ? `${nomeArea} — Execução`
-      : `${nomeArea} — Aguardando designação do Gestor`;
-
-    const itensSemArea = (solicitacao.itens ?? []).filter((item) => !item.areaProgramaId);
-    for (const item of itensSemArea) {
-      item.areaProgramaId = areaProgramaId;
-      item.statusItem = StatusItem.EM_ANALISE;
-      if (coordenadorId) {
-        item.coordenadorResponsavelId = coordenadorId;
-      }
-      await this.itemRepo.save(item);
-    }
-
+    item.areaProgramaId = areaProgramaId;
+    item.statusItem = StatusItem.EM_ANALISE;
     if (coordenadorId) {
-      solicitacao.coordenadorDesignadoId = coordenadorId;
+      item.coordenadorResponsavelId = coordenadorId;
     }
+    await this.itemRepo.save(item);
 
-    await this.solicitacaoRepo.save(solicitacao);
+    await this.recalcularEtapaDirecionamento(solicitacao);
+
+    const motivo = observacao?.trim()
+      ? `Área/Programa: ${nomeArea} — ${observacao.trim()}`
+      : `Área/Programa: ${nomeArea}`;
+
     await this.registrarTramitacao(solicitacao, {
-      deEtapa,
-      paraEtapa: solicitacao.etapaAtual,
+      itemSolicitacaoId: item.id,
+      deEtapa: 'Diretor Educacional — Direcionamento',
+      paraEtapa: coordenadorId ? `${nomeArea} — Execução` : `${nomeArea} — Aguardando designação do Gestor`,
       acao: AcaoTramitacao.DIRECIONAR,
       usuario,
-      motivo: `Área/Programa: ${nomeArea}`,
+      motivo,
     });
+
+    if (coordenadorId) {
+      await this.notificacoes.notificarCoordenadorDesignado(solicitacao, coordenadorId);
+    } else {
+      await this.notificacoes.notificarGestorDaArea(solicitacao, areaProgramaId);
+    }
   }
 
   // ---------------------------------------------------------------- HU06
@@ -205,12 +260,7 @@ export class SolicitacaoStateMachineService {
     item.statusItem = StatusItem.EM_ANALISE;
     await this.itemRepo.save(item);
 
-    solicitacao.coordenadorDesignadoId = coordenadorId;
-    solicitacao.etapaAtual = solicitacao.etapaAtual.replace(
-      'Aguardando designação do Gestor',
-      'Execução',
-    );
-    await this.solicitacaoRepo.save(solicitacao);
+    await this.recalcularEtapaDirecionamento(solicitacao);
 
     await this.registrarTramitacao(solicitacao, {
       itemSolicitacaoId: item.id,
@@ -219,6 +269,35 @@ export class SolicitacaoStateMachineService {
       acao: AcaoTramitacao.DESIGNAR_COORDENADOR,
       usuario,
     });
+    await this.notificacoes.notificarCoordenadorDesignado(solicitacao, coordenadorId);
+  }
+
+  /**
+   * `etapaAtual` é um único rótulo textual por solicitação (usado pelo stepper
+   * do frontend), mas com a bifurcação por item não existe mais "uma área" para
+   * nomear ali. Por isso o rótulo passa a refletir o estágio MENOS avançado
+   * entre os itens: enquanto houver item sem área, mostra "Direcionamento";
+   * quando todos já têm área mas algum ainda não tem coordenador, mostra
+   * "Aguardando designação do Gestor"; só quando todos os itens já têm
+   * coordenador é que avança para "Execução".
+   */
+  private async recalcularEtapaDirecionamento(solicitacao: Solicitacao): Promise<void> {
+    const itens = await this.itemRepo.find({ where: { solicitacaoId: solicitacao.id } });
+
+    if (itens.some((item) => !item.areaProgramaId)) {
+      solicitacao.etapaAtual = 'Diretor Educacional — Direcionamento';
+    } else if (itens.some((item) => !item.coordenadorResponsavelId)) {
+      solicitacao.etapaAtual = 'Aguardando designação do Gestor';
+    } else {
+      solicitacao.etapaAtual = 'Execução';
+    }
+
+    // update() em vez de save(): `solicitacao.itens` aqui é o snapshot ANTERIOR
+    // ao roteamento deste item (carregado no início da requisição) — como
+    // `Solicitacao.itens` tem cascade:true, um save() do agregado inteiro
+    // reescreveria cada item com esses dados desatualizados, apagando o
+    // direcionamento que acabamos de gravar via itemRepo.save().
+    await this.solicitacaoRepo.update(solicitacao.id, { etapaAtual: solicitacao.etapaAtual });
   }
 
   // ---------------------------------------------------------------- HU07
@@ -255,6 +334,96 @@ export class SolicitacaoStateMachineService {
       usuario,
       motivo,
     });
+    await this.notificacoes.notificarGestorDaArea(solicitacao, novaAreaProgramaId);
+  }
+
+  /**
+   * O Coordenador pode corrigir os campos que o Mobilizador/Presidente
+   * preencheu ao protocolar — o valor original já está preservado em
+   * `item.valoresOriginais` desde a criação do item, então aqui só
+   * aplicamos os novos valores (o histórico completo é, na prática, "original
+   * vs. atual", sem precisar guardar cada edição intermediária).
+   */
+  async editarItem(
+    item: ItemSolicitacao,
+    solicitacao: Solicitacao,
+    usuario: UsuarioAutenticado,
+    dto: EditarItemDto,
+  ): Promise<ItemSolicitacao> {
+    if (dto.tipoEvento !== undefined) item.tipoEvento = dto.tipoEvento;
+    if (dto.acaoAtividade !== undefined) item.acaoAtividade = dto.acaoAtividade;
+    if (dto.disciplina !== undefined) item.disciplina = dto.disciplina;
+    if (dto.turno !== undefined) item.turno = dto.turno;
+    if (dto.dataInicio !== undefined) item.dataInicio = dto.dataInicio;
+    if (dto.dataFim !== undefined) item.dataFim = dto.dataFim;
+
+    const salvo = await this.itemRepo.save(item);
+
+    await this.registrarTramitacao(solicitacao, {
+      itemSolicitacaoId: item.id,
+      deEtapa: 'Dados informados pelo Mobilizador',
+      paraEtapa: 'Dados corrigidos pelo Coordenador',
+      acao: AcaoTramitacao.EDITAR_ITEM,
+      usuario,
+    });
+
+    return salvo;
+  }
+
+  /**
+   * O(a) Assessor(a) (ao aprovar) e o Superintendente (ao despachar) podem
+   * decidir que um item não vai avançar pelo fluxo das áreas — o item nunca
+   * passa por Diretor/Gestor/Coordenador e recebe uma devolutiva registrada
+   * diretamente por quem excluiu. Por padrão o resultado é "Não Atendido"
+   * (o caso comum de desmarcar "Atender"), mas também serve para o Convite
+   * (HU03) — exclusivo da Assessoria, que fala direto com o Superintendente
+   * e decide se atende ou não, sem passar pelo resto do fluxo de qualquer forma.
+   * Isso torna o item "finalizado" para fins do cálculo do status macro geral,
+   * exatamente como qualquer outra devolutiva.
+   */
+  async excluirItemDoFluxo(
+    item: ItemSolicitacao,
+    solicitacao: Solicitacao,
+    usuario: UsuarioAutenticado,
+    observacao?: string,
+    resultado: ResultadoDevolutiva = ResultadoDevolutiva.NAO_ATENDIDO,
+  ): Promise<void> {
+    if (item.statusItem !== StatusItem.PENDENTE) {
+      return; // já finalizado (por devolutiva normal ou exclusão anterior) — idempotente
+    }
+
+    const statusPorResultado: Record<ResultadoDevolutiva, StatusItem> = {
+      [ResultadoDevolutiva.ATENDIDO]: StatusItem.ATENDIDO,
+      [ResultadoDevolutiva.PARCIALMENTE_ATENDIDO]: StatusItem.PARCIALMENTE_ATENDIDO,
+      [ResultadoDevolutiva.NAO_ATENDIDO]: StatusItem.NAO_ATENDIDO,
+    };
+    const mensagemPadrao =
+      resultado === ResultadoDevolutiva.ATENDIDO
+        ? `Atendido diretamente pela Assessoria (${usuario.nome}).`
+        : `Item não incluído no fluxo por ${usuario.nome}.`;
+
+    const devolutiva = this.devolutivaRepo.create({
+      itemSolicitacaoId: item.id,
+      resultado,
+      justificativa: observacao?.trim() || mensagemPadrao,
+      registradoPorId: usuario.id,
+      registradoPorNome: usuario.nome,
+    });
+    await this.devolutivaRepo.save(devolutiva);
+
+    item.statusItem = statusPorResultado[resultado];
+    await this.itemRepo.save(item);
+
+    await this.registrarTramitacao(solicitacao, {
+      itemSolicitacaoId: item.id,
+      deEtapa: 'Pendente',
+      paraEtapa: resultado === ResultadoDevolutiva.ATENDIDO ? 'Atendido pela Assessoria' : 'Não incluído no fluxo',
+      acao: AcaoTramitacao.EXCLUIR_ITEM_DO_FLUXO,
+      usuario,
+      motivo: devolutiva.justificativa,
+    });
+
+    await this.recalcularStatusMacro(solicitacao);
   }
 
   /** HU07/HU09 — registra a devolutiva de um item e recalcula o status macro (derivado). */
@@ -320,7 +489,12 @@ export class SolicitacaoStateMachineService {
         : StatusMacro.PARCIALMENTE_ATENDIDO;
     solicitacao.etapaAtual = 'Concluído — devolutiva consolidada disponível';
 
-    await this.solicitacaoRepo.save(solicitacao);
+    // update(), não save() — mesma razão de recalcularEtapaDirecionamento: evitar
+    // que o cascade de `itens` reescreva o item cuja devolutiva acabou de ser salva.
+    await this.solicitacaoRepo.update(solicitacao.id, {
+      statusMacro: solicitacao.statusMacro,
+      etapaAtual: solicitacao.etapaAtual,
+    });
     await this.registrarTramitacao(solicitacao, {
       deEtapa: 'Em execução',
       paraEtapa: solicitacao.statusMacro,
@@ -328,6 +502,7 @@ export class SolicitacaoStateMachineService {
       usuario: null,
       motivo: 'Status consolidado automaticamente a partir das devolutivas de todos os itens.',
     });
+    await this.notificacoes.notificarMobilizadorEPresidente(solicitacao, 'DEVOLUTIVA_FINAL');
   }
 
   private assertStatus(solicitacao: Solicitacao, esperado: StatusMacro): void {
@@ -358,6 +533,7 @@ export class SolicitacaoStateMachineService {
       motivo: dados.motivo,
       usuarioId: dados.usuario?.id,
       usuarioNome: dados.usuario?.nome ?? 'Sistema (automático)',
+      usuarioPapel: dados.usuario?.papel ?? null,
     });
     return this.tramitacaoRepo.save(tramitacao);
   }

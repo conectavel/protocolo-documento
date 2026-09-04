@@ -7,6 +7,7 @@ import {
   Headers,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
@@ -14,6 +15,7 @@ import { JwtAuthGuard, UsuarioAutenticado } from '../../common/guards/jwt-auth.g
 import { UsuarioAtual } from '../../common/decorators/usuario-atual.decorator';
 import { PreProtocolosService } from './pre-protocolos.service';
 import { IngerirPreProtocoloDto } from './dto/ingerir-pre-protocolo.dto';
+import { ListarPreProtocolosDto } from './dto/listar-pre-protocolos.dto';
 import { CriarSolicitacaoDto } from '../solicitacoes/dto/criar-solicitacao.dto';
 
 @Controller('pre-protocolos')
@@ -42,8 +44,8 @@ export class PreProtocolosController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  listar(@UsuarioAtual() usuario: UsuarioAutenticado) {
-    return this.preProtocolosService.listar(usuario);
+  listar(@Query() filtros: ListarPreProtocolosDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.preProtocolosService.listar(usuario, filtros);
   }
 
   @Get(':id')

@@ -79,14 +79,34 @@
 }
 
 .po-list-card {
+  position: relative;
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-list-card);
   padding: 20px;
   box-shadow: var(--shadow-card);
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
   display: flex;
   flex-direction: column;
+
+  // Devolvido pela Assessoria — o Mobilizador/Presidente precisa corrigir e
+  // reenviar; o card ganha uma borda vermelha e um pontinho pulsante para não
+  // passar despercebido no meio dos outros protocolos.
+  &--precisa-correcao {
+    border-color: var(--color-warn);
+  }
+
+  &__pulso-correcao {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--color-warn);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    animation: po-pulso-correcao 1.6s ease-out infinite;
+  }
 
   &:hover {
     box-shadow: var(--shadow-card-hover);
@@ -128,6 +148,33 @@
       color: var(--color-text-secondary);
       opacity: 0.5;
     }
+  }
+
+  &__numero-processo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    align-self: flex-start;
+    margin-bottom: 12px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent-light, rgba(20, 83, 45, 0.12));
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  &__origem-email {
+    flex-shrink: 0;
+    margin-top: 3px;
+    cursor: default;
   }
 
   &__menu {
@@ -175,6 +222,19 @@
     padding-top: 8px;
     border-top: 1px solid var(--color-border-light);
   }
+
+  // Ação rápida de tramitação — chama atenção quando é o próprio usuário quem
+  // precisa agir; vira um indicador neutro/desabilitado quando o processo
+  // está com outro responsável no fluxo.
+  &__tramitar {
+    width: 100%;
+    margin-top: 8px;
+
+    &--info {
+      color: var(--color-text-secondary);
+      opacity: 0.75;
+    }
+  }
 }
 
 .po-table-container {
@@ -219,4 +279,16 @@
   border: 1px solid var(--color-border);
   box-shadow: var(--shadow-card);
   background: var(--color-surface);
+}
+
+@keyframes po-pulso-correcao {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
 }

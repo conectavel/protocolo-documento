@@ -2,6 +2,12 @@
   <h1 class="po-page-title">
     <mat-icon>description</mat-icon>
     Detalhe da Solicitação
+    @if (solicitacao()?.numeroProcesso) {
+      <span class="po-numero-processo-destaque">
+        <mat-icon>tag</mat-icon>
+        Nº {{ solicitacao()?.numeroProcesso }}
+      </span>
+    }
   </h1>
   <p class="po-page-subtitle">
     <mat-icon>info</mat-icon>
@@ -14,7 +20,7 @@
 } @else if (!solicitacao()) {
   <app-empty-state mensagem="Solicitação não encontrada"></app-empty-state>
 } @else {
-  <ng-container *ngIf="solicitacao() as sol">
+  @if (solicitacao(); as sol) {
     @if (erroAcao()) {
       <div class="po-banner">
         <div class="po-banner-text">
@@ -24,10 +30,88 @@
       </div>
     }
 
-    <!-- Identificação -->
+    @if (sol.emailRemetenteOrigem) {
+      <div class="po-origem-email-banner">
+        <div class="po-origem-email-banner__texto">
+          <mat-icon>mark_email_unread</mat-icon>
+          <span>
+            Este protocolo teve origem em um e-mail recebido de
+            <strong>{{ sol.emailRemetenteOrigem }}</strong>.
+          </span>
+        </div>
+        <a
+          mat-stroked-button
+          color="primary"
+          [href]="linkResponderEmailOrigem(sol)"
+        >
+          <mat-icon>reply</mat-icon>
+          Responder por e-mail
+        </a>
+      </div>
+    }
+
+    <!-- Stepper de etapas (HU01) — visão simplificada para Mobilizador/Presidente,
+         fluxo completo para os demais papéis. -->
+    <div class="po-card po-stepper-card">
+      <div class="po-stepper" [class.po-stepper--cancelado]="cancelado()">
+        @for (etapa of etapasStepper(); track $index) {
+          <div class="po-stepper__item">
+            <div
+              class="po-stepper__marcador"
+              [class.po-stepper__marcador--concluido]="etapaConcluida($index)"
+              [class.po-stepper__marcador--ativo]="etapaAtiva($index)"
+              [class.po-stepper__marcador--cancelado]="cancelado() && $index === indiceEtapaAtual()"
+            >
+              @if (cancelado() && $index === indiceEtapaAtual()) {
+                <mat-icon>close</mat-icon>
+              } @else if (etapaConcluida($index)) {
+                <mat-icon>check</mat-icon>
+              } @else {
+                <span>{{ $index + 1 }}</span>
+              }
+            </div>
+            <span class="po-stepper__rotulo" [class.po-stepper__rotulo--ativo]="etapaAtiva($index)">
+              {{ etapa }}
+            </span>
+          </div>
+          @if (!$last) {
+            <div class="po-stepper__linha" [class.po-stepper__linha--concluida]="etapaConcluida($index)"></div>
+          }
+        }
+      </div>
+      @if (cancelado()) {
+        <p class="po-hint po-hint--erro po-stepper__aviso">
+          Esta solicitação foi recusada e não seguirá para as demais etapas.
+        </p>
+      }
+    </div>
+
+    <!--
+      HU01 — a visualização do Mobilizador/Presidente fica restrita ao status e
+      à devolutiva final (já dentro de "Processo"): para eles não faz sentido
+      mostrar uma barra de abas com uma única opção, então o cabeçalho das abas
+      fica oculto via CSS (.po-detalhe-tabs--sem-abas) e só "Processo" existe no
+      DOM. Para os demais papéis, "Processo" ganha companhia de "Anexos" (todos
+      os documentos do processo) e "Aprovações" (o histórico de quem já atuou
+      no fluxo).
+
+      Nota técnica: o conteúdo de "Processo" fica direto dentro do <mat-tab>
+      (sem <ng-template>/*ngTemplateOutlet* compartilhado com um branco sem
+      abas) porque essa combinação, junto com os @for abaixo, disparava um bug
+      do compilador Ivy ("tmp_N_0 is not defined") que fazia a lista de itens
+      renderizar vazia — reproduzido com Playwright headless.
+    -->
+    <mat-tab-group
+      class="po-detalhe-tabs"
+      [class.po-detalhe-tabs--sem-abas]="ehMobilizador()"
+      animationDuration="220ms"
+    >
+      <mat-tab label="Processo">
+      <div class="po-tab-conteudo">
+    <!-- Identificação do Solicitante -->
     <div class="po-card">
       <div class="po-card-section-title">
-        <span>{{ sol.assunto }}</span>
+        <span>Identificação do Solicitante</span>
         <app-status-chip [statusMacro]="sol.statusMacro"></app-status-chip>
       </div>
       <div class="po-divider-gradient"></div>
@@ -38,10 +122,6 @@
           <span class="po-detalhe-valor">{{ sol.parceiroNome || '—' }}</span>
         </div>
         <div class="po-detalhe-campo">
-          <span class="po-detalhe-label">Município</span>
-          <span class="po-detalhe-valor">{{ sol.municipio || '—' }}</span>
-        </div>
-        <div class="po-detalhe-campo">
           <span class="po-detalhe-label">Presidente</span>
           <span class="po-detalhe-valor">{{ sol.presidenteNome || '—' }}</span>
         </div>
@@ -50,12 +130,8 @@
           <span class="po-detalhe-valor">{{ sol.mobilizadorNome || '—' }}</span>
         </div>
         <div class="po-detalhe-campo">
-          <span class="po-detalhe-label">Nº do Documento</span>
-          <span class="po-detalhe-valor">{{ sol.numeroDocumento || '—' }}</span>
-        </div>
-        <div class="po-detalhe-campo">
-          <span class="po-detalhe-label">Data do Documento</span>
-          <span class="po-detalhe-valor">{{ sol.dataDocumento | date: 'dd/MM/yyyy' }}</span>
+          <span class="po-detalhe-label">Coordenador Regional</span>
+          <span class="po-detalhe-valor">{{ sol.coordenadorRegionalNome || '—' }}</span>
         </div>
 
         @if (sol.etapaAtual) {
@@ -65,20 +141,45 @@
           </div>
         }
       </div>
+    </div>
 
-      @if (sol.resumoObservacoes) {
-        <p class="po-detalhe-observacoes">{{ sol.resumoObservacoes }}</p>
-      }
+    <!-- Dados do Documento -->
+    <div class="po-card">
+      <div class="po-card-section-title">Dados do Documento</div>
+      <div class="po-divider-gradient"></div>
+
+      <div class="po-grid">
+        <div class="po-detalhe-campo po-field-full">
+          <span class="po-detalhe-label">Assunto</span>
+          <span class="po-detalhe-valor">{{ sol.assunto || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Nº do Documento</span>
+          <span class="po-detalhe-valor">{{ sol.numeroDocumento || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Município</span>
+          <span class="po-detalhe-valor">{{ sol.municipio || '—' }}</span>
+        </div>
+        <div class="po-detalhe-campo">
+          <span class="po-detalhe-label">Data do Documento</span>
+          <span class="po-detalhe-valor">{{ sol.dataDocumento | date: 'dd/MM/yyyy' }}</span>
+        </div>
+        <div class="po-detalhe-campo po-field-full">
+          <span class="po-detalhe-label">Resumo / Observações</span>
+          <span class="po-detalhe-valor">{{ sol.resumoObservacoes || '—' }}</span>
+        </div>
+      </div>
 
       <div class="po-mt-16">
-        <div class="po-card-section-title">Documento que originou o protocolo</div>
+        <div class="po-card-section-title">Visualizar o PDF</div>
         <div class="po-divider-gradient"></div>
         <app-pdf-viewer [anexoId]="sol.anexoOficioId" nomeArquivo="ofício.pdf"></app-pdf-viewer>
       </div>
     </div>
 
     <!-- Ações do fluxo — nível da solicitação -->
-    @if (podeDarCiencia() || podeAnalisarAssessoria() || podeDespachar() || podeDirecionar()) {
+    @if (podeDarCiencia() || podeAnalisarAssessoria() || podeDespachar()) {
       <div class="po-card">
         <div class="po-card-section-title">Ações do Fluxo</div>
         <div class="po-divider-gradient"></div>
@@ -87,7 +188,13 @@
           <p class="po-hint">
             Como Coordenador Regional, dê ciência a esta solicitação (SLA de 24h).
           </p>
-          <button mat-flat-button color="primary" [disabled]="executandoAcao()" (click)="darCiencia()">
+          <button
+            mat-flat-button
+            color="primary"
+            class="po-botao-dar-ciencia"
+            [disabled]="executandoAcao()"
+            (click)="darCiencia()"
+          >
             <mat-icon>check_circle</mat-icon>
             Dar Ciência
           </button>
@@ -95,46 +202,33 @@
 
         @if (podeAnalisarAssessoria()) {
           <p class="po-hint">Analise a solicitação e escolha uma decisão.</p>
-          <div class="po-acoes-linha">
-            <button mat-flat-button color="primary" [disabled]="executandoAcao()" (click)="aprovarAssessoria()">
-              <mat-icon>check</mat-icon>
-              Aprovar / Prosseguir
+          <div class="po-acoes-linha po-acoes-linha--destaque">
+            <button mat-stroked-button color="warn" [disabled]="executandoAcao()" (click)="recusarAssessoria()">
+              <mat-icon>close</mat-icon>
+              Recusar
             </button>
-            <button mat-stroked-button [disabled]="executandoAcao()" (click)="devolverAssessoria()">
+            <button mat-stroked-button color="primary" [disabled]="executandoAcao()" (click)="devolverAssessoria()">
               <mat-icon>undo</mat-icon>
               Devolver para Ajuste
             </button>
-            <button mat-flat-button color="warn" [disabled]="executandoAcao()" (click)="recusarAssessoria()">
-              <mat-icon>close</mat-icon>
-              Recusar
+            <button mat-flat-button color="primary" class="po-acoes-linha__principal" [disabled]="executandoAcao()" (click)="aprovarAssessoria()">
+              <mat-icon>check</mat-icon>
+              Aprovar / Prosseguir
             </button>
           </div>
         }
 
         @if (podeDespachar()) {
-          <p class="po-hint">Despache esta solicitação para a Diretoria Educacional.</p>
-          <button mat-flat-button color="primary" [disabled]="executandoAcao()" (click)="despachar()">
-            <mat-icon>send</mat-icon>
-            Despachar para Diretoria Educacional
-          </button>
-        }
-
-        @if (podeDirecionar()) {
-          <form [formGroup]="direcionarForm" class="po-grid po-grid--2 po-mt-16">
-            <mat-form-field appearance="outline">
-              <mat-label>Área/Programa</mat-label>
-              <mat-select formControlName="areaProgramaId">
-                @for (area of areasPrograma(); track area.id) {
-                  <mat-option [value]="area.id">{{ area.nome }}</mat-option>
-                }
-              </mat-select>
-            </mat-form-field>
-            <mat-form-field appearance="outline">
-              <mat-label>Coordenador (opcional — deixe em branco para delegar ao Gestor)</mat-label>
-              <mat-select formControlName="coordenadorId">
-                <mat-option value="">Delegar ao Gestor</mat-option>
-                @for (coord of coordenadoresDaArea(direcionarForm.controls.areaProgramaId.value); track coord.id) {
-                  <mat-option [value]="coord.id">{{ coord.nome }}</mat-option>
+          <p class="po-hint">
+            Escolha os Diretores responsáveis por esta solicitação — cada um poderá, depois,
+            direcionar os itens do time dele para a Área/Programa correta.
+          </p>
+          <form [formGroup]="despacharForm" class="po-mt-16">
+            <mat-form-field appearance="outline" class="po-field-full">
+              <mat-label>Diretores responsáveis</mat-label>
+              <mat-select formControlName="diretoresIds" multiple>
+                @for (diretor of diretores(); track diretor.id) {
+                  <mat-option [value]="diretor.id">{{ diretor.nome }}</mat-option>
                 }
               </mat-select>
             </mat-form-field>
@@ -142,12 +236,12 @@
           <button
             mat-flat-button
             color="primary"
-            class="po-mt-16"
+            class="po-mt-16 po-botao-dar-ciencia"
             [disabled]="executandoAcao()"
-            (click)="direcionar()"
+            (click)="despachar()"
           >
-            <mat-icon>alt_route</mat-icon>
-            Direcionar
+            <mat-icon>send</mat-icon>
+            Despachar para Diretoria(as)
           </button>
         }
       </div>
@@ -155,31 +249,164 @@
 
     <!-- Itens da solicitação -->
     <div class="po-card">
-      <div class="po-card-section-title">Itens da Solicitação</div>
+      <div class="po-card-section-title">
+        <span>Itens da Solicitação</span>
+        <span class="po-chip po-chip--neutral">Total: {{ sol.itens.length }}</span>
+      </div>
       <div class="po-divider-gradient"></div>
 
-      @for (item of sol.itens; track item.id ?? $index) {
+      @for (item of sol.itens; track $index) {
         <div class="po-nested-block po-item-block">
-          <div class="po-item-block__cabecalho">
+          <div
+            class="po-item-block__cabecalho"
+            [class.po-item-block--desmarcado]="itemDesmarcadoPreview(item)"
+          >
+            <div class="po-item-block__icone" [ngClass]="'po-item-block__icone--' + item.tipo">
+              <mat-icon>{{ tipoItemIcones[item.tipo] }}</mat-icon>
+            </div>
             <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
             <span class="po-item-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
             @if (item.statusItem) {
               <app-status-chip [statusItem]="item.statusItem"></app-status-chip>
             }
+            @if (podeMarcarAtenderItem(item)) {
+              <mat-checkbox
+                class="po-item-block__atender"
+                [checked]="itemMarcadoParaAtender(item.id)"
+                (change)="toggleAtenderItem(item.id)"
+                matTooltip="Desmarque para não incluir este item no fluxo — ele será marcado como Parcialmente Atendido automaticamente."
+              >
+                Atender
+              </mat-checkbox>
+            }
           </div>
 
-          @if (item.areaProgramaNome) {
-            <p class="po-item-block__linha">Área/Programa: {{ item.areaProgramaNome }}</p>
+          @if (itemPrecisaDeObservacaoExclusao(item)) {
+            <mat-form-field appearance="outline" class="po-item-block__observacao-exclusao">
+              <mat-label>
+                {{ itemConviteRequerDevolutiva(item) ? 'Devolutiva do Convite (obrigatória)' : 'Devolutiva / observação (opcional)' }}
+              </mat-label>
+              <textarea
+                matInput
+                rows="2"
+                [placeholder]="
+                  itemConviteRequerDevolutiva(item)
+                    ? (itemMarcadoParaAtender(item.id) ? 'Confirme os detalhes de comparecimento…' : 'Justifique por que não será atendido…')
+                    : 'Explique por que este item não avança pelo fluxo…'
+                "
+                [ngModel]="observacaoItemExcluido(item.id)"
+                (ngModelChange)="definirObservacaoItemExcluido(item.id, $event)"
+              ></textarea>
+              @if (!itemConviteRequerDevolutiva(item)) {
+                <mat-hint>Sem observação, fica registrado apenas "Item não incluído no fluxo por você".</mat-hint>
+              }
+            </mat-form-field>
           }
-          @if (item.coordenadorNome) {
-            <p class="po-item-block__linha">Coordenador: {{ item.coordenadorNome }}</p>
-          }
+
+          <div
+            class="po-grid po-grid--4 po-item-block__campos"
+            [class.po-item-block--desmarcado]="itemDesmarcadoPreview(item)"
+          >
+            @if (item.tipo === 'ACAO_ATIVIDADE') {
+              <div class="po-detalhe-campo">
+                <span class="po-detalhe-label">Tipo do Evento</span>
+                <span class="po-detalhe-valor">{{ item.tipoEvento || '—' }}</span>
+              </div>
+              <div class="po-detalhe-campo">
+                <span class="po-detalhe-label">Ação/Atividade</span>
+                <span class="po-detalhe-valor">{{ item.acaoAtividade || '—' }}</span>
+              </div>
+              <div class="po-detalhe-campo">
+                <span class="po-detalhe-label">Disciplina</span>
+                <span class="po-detalhe-valor">{{ item.disciplina || '—' }}</span>
+              </div>
+              <div class="po-detalhe-campo">
+                <span class="po-detalhe-label">Turno</span>
+                <span class="po-detalhe-valor">{{ turnoLabels[item.turno ?? ''] || item.turno || '—' }}</span>
+              </div>
+            }
+            <div class="po-detalhe-campo">
+              <span class="po-detalhe-label">Data Início</span>
+              <span class="po-detalhe-valor">{{ (item.dataInicio | date: 'dd/MM/yyyy') || '—' }}</span>
+            </div>
+            <div class="po-detalhe-campo">
+              <span class="po-detalhe-label">Data Fim</span>
+              <span class="po-detalhe-valor">{{ (item.dataFim | date: 'dd/MM/yyyy') || '—' }}</span>
+            </div>
+            @if (item.areaProgramaNome) {
+              <div class="po-detalhe-campo">
+                <span class="po-detalhe-label">Área/Programa</span>
+                <span class="po-detalhe-valor">{{ item.areaProgramaNome }}</span>
+              </div>
+            }
+            @if (item.coordenadorNome) {
+              <div class="po-detalhe-campo">
+                <span class="po-detalhe-label">Coordenador</span>
+                <span class="po-detalhe-valor">{{ item.coordenadorNome }}</span>
+              </div>
+            }
+          </div>
+
           @if (item.resumo) {
             <p class="po-item-block__linha">{{ item.resumo }}</p>
           }
 
+          @if (itemFoiEditado(item)) {
+            <button type="button" class="po-historico-toggle" (click)="toggleHistoricoItem($index)">
+              <mat-icon>{{ historicoItemAberto($index) ? 'expand_less' : 'history' }}</mat-icon>
+              {{ historicoItemAberto($index) ? 'Ocultar valores originais' : 'Ver valores originais do Mobilizador' }}
+            </button>
+            @if (historicoItemAberto($index)) {
+              <div class="po-historico-original">
+                <div class="po-historico-original__linha">
+                  <span>Tipo do Evento</span>
+                  <strong>{{ item.valoresOriginais?.tipoEvento || '—' }}</strong>
+                </div>
+                <div class="po-historico-original__linha">
+                  <span>Ação/Atividade</span>
+                  <strong>{{ item.valoresOriginais?.acaoAtividade || '—' }}</strong>
+                </div>
+                <div class="po-historico-original__linha">
+                  <span>Disciplina</span>
+                  <strong>{{ item.valoresOriginais?.disciplina || '—' }}</strong>
+                </div>
+                <div class="po-historico-original__linha">
+                  <span>Turno</span>
+                  <strong>{{ turnoLabels[item.valoresOriginais?.turno ?? ''] || item.valoresOriginais?.turno || '—' }}</strong>
+                </div>
+                <div class="po-historico-original__linha">
+                  <span>Data Início</span>
+                  <strong>{{ (item.valoresOriginais?.dataInicio | date: 'dd/MM/yyyy') || '—' }}</strong>
+                </div>
+                <div class="po-historico-original__linha">
+                  <span>Data Fim</span>
+                  <strong>{{ (item.valoresOriginais?.dataFim | date: 'dd/MM/yyyy') || '—' }}</strong>
+                </div>
+              </div>
+            }
+          }
+
+          @if (itemPodeSerEditado(item)) {
+            <button mat-stroked-button color="primary" class="po-mt-16 po-botao-arredondado" (click)="editarItem(item)">
+              <mat-icon>edit</mat-icon>
+              Editar Ação/Atividade
+            </button>
+          }
+
+          @if (itemPodeSerDirecionado(item)) {
+            <button mat-flat-button color="primary" class="po-mt-16" (click)="direcionarItem(item)">
+              <mat-icon>alt_route</mat-icon>
+              Direcionar
+            </button>
+          }
+
           @if (itemPodeSerDesignado(item)) {
-            <button mat-flat-button color="primary" class="po-mt-16" (click)="designarCoordenador(item)">
+            <button
+              mat-flat-button
+              color="primary"
+              class="po-mt-16 po-botao-dar-ciencia"
+              (click)="designarCoordenador(item)"
+            >
               <mat-icon>person_add</mat-icon>
               Designar Coordenador
             </button>
@@ -208,28 +435,16 @@
                   }
                 </mat-select>
               </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Data do evento</mat-label>
-                <input matInput [matDatepicker]="pickerEvento" formControlName="dataEvento" />
-                <mat-datepicker-toggle matIconSuffix [for]="pickerEvento"></mat-datepicker-toggle>
-                <mat-datepicker #pickerEvento></mat-datepicker>
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Horário</mat-label>
-                <input matInput formControlName="horario" placeholder="hh:mm" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Local</mat-label>
-                <input matInput formControlName="local" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Nº do Evento/Turma (Fluig)</mat-label>
-                <input matInput formControlName="numeroEventoTurma" />
-              </mat-form-field>
-              <mat-form-field appearance="outline">
-                <mat-label>Nº do Processo de Aceite Fluig</mat-label>
-                <input matInput formControlName="numeroProcessoAceiteFluig" />
-              </mat-form-field>
+              @if (formularioDevolutiva($index).controls.resultado.value !== 'NAO_ATENDIDO') {
+                <mat-form-field appearance="outline">
+                  <mat-label>Nº do Evento/Turma (gerado em outro sistema)</mat-label>
+                  <input matInput formControlName="numeroEventoTurma" />
+                </mat-form-field>
+                <mat-form-field appearance="outline">
+                  <mat-label>Nº do Processo de Aceite Fluig</mat-label>
+                  <input matInput formControlName="numeroProcessoAceiteFluig" />
+                </mat-form-field>
+              }
               <mat-form-field appearance="outline" class="po-field-full">
                 <mat-label>Justificativa (obrigatória se não totalmente atendido)</mat-label>
                 <textarea matInput rows="3" formControlName="justificativa"></textarea>
@@ -238,7 +453,7 @@
             <button
               mat-flat-button
               color="primary"
-              class="po-mt-16"
+              class="po-mt-16 po-botao-dar-ciencia"
               [disabled]="executandoAcao()"
               (click)="registrarDevolutiva(item, $index)"
             >
@@ -266,60 +481,154 @@
           }
         </div>
       }
+
+      @if (ehDiretor() && todosItensDirecionados()) {
+        <button
+          mat-flat-button
+          color="primary"
+          class="po-mt-16 po-analise-providencia"
+          (click)="confirmarAnaliseProvidencia()"
+        >
+          <mat-icon>task_alt</mat-icon>
+          Análise e Providência
+        </button>
+      }
     </div>
 
-    <!-- Devolutiva consolidada (HU09) -->
-    @if (ehMobilizador()) {
-      <div class="po-card">
-        <div class="po-card-section-title">Devolutiva Consolidada</div>
+    <!-- Devolutiva Global (HU09) — só aparece quando TODOS os itens já têm uma
+         devolutiva registrada, ou seja, quando existe um veredito geral para a
+         solicitação como um todo. O detalhe de cada item já foi mostrado dentro
+         do próprio box em "Itens da Solicitação" acima. -->
+    @if (ehMobilizador() && temDevolutivaGlobal()) {
+      <div class="po-card po-devolutiva-global">
+        <div class="po-card-section-title">
+          <span>Devolutiva Global</span>
+          <app-status-chip
+            [label]="resultadoGlobalLabel()"
+            [tomForcado]="resultadoGlobalTom()"
+          ></app-status-chip>
+        </div>
         <div class="po-divider-gradient"></div>
 
-        @for (item of sol.itens; track item.id ?? $index) {
-          <div class="po-nested-block">
-            <div class="po-item-block__cabecalho">
-              <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
-              <span class="po-item-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
-              @if (item.devolutiva) {
-                <app-status-chip
-                  [label]="item.devolutiva.resultado === 'ATENDIDO' ? 'Atendido' : (item.devolutiva.resultado === 'PARCIALMENTE_ATENDIDO' ? 'Parcialmente Atendido' : 'Não Atendido')"
-                  [tomForcado]="item.devolutiva.resultado === 'ATENDIDO' ? 'success' : (item.devolutiva.resultado === 'PARCIALMENTE_ATENDIDO' ? 'warning' : 'neutral')"
-                ></app-status-chip>
-              } @else {
-                <span class="po-chip po-chip--warning">Em andamento</span>
-              }
-            </div>
-            @if (item.devolutiva?.justificativa) {
-              <p class="po-item-block__linha">{{ item.devolutiva?.justificativa }}</p>
+        <div class="po-devolutiva-global__contadores">
+          <div class="po-devolutiva-global__contador po-devolutiva-global__contador--success">
+            <mat-icon>check_circle</mat-icon>
+            <strong>{{ contagemDevolutiva().atendido }}</strong>
+            <span>Atendido{{ contagemDevolutiva().atendido === 1 ? '' : 's' }}</span>
+          </div>
+          <div class="po-devolutiva-global__contador po-devolutiva-global__contador--warning">
+            <mat-icon>error</mat-icon>
+            <strong>{{ contagemDevolutiva().parcial }}</strong>
+            <span>Parcial{{ contagemDevolutiva().parcial === 1 ? '' : 'mente atendidos' }}</span>
+          </div>
+          <div class="po-devolutiva-global__contador po-devolutiva-global__contador--neutral">
+            <mat-icon>cancel</mat-icon>
+            <strong>{{ contagemDevolutiva().naoAtendido }}</strong>
+            <span>Não atendido{{ contagemDevolutiva().naoAtendido === 1 ? '' : 's' }}</span>
+          </div>
+        </div>
+
+        <div class="po-devolutiva-global__barra">
+          @for (item of sol.itens; track $index) {
+            <span
+              class="po-devolutiva-global__seg"
+              [ngClass]="'po-devolutiva-global__seg--' + (item.devolutiva?.resultado || 'NAO_ATENDIDO')"
+              [matTooltip]="item.titulo || item.acaoAtividade || tipoItemLabels[item.tipo]"
+            ></span>
+          }
+        </div>
+      </div>
+    }
+      </div>
+      </mat-tab>
+
+      @if (!ehMobilizador()) {
+        <mat-tab>
+          <ng-template mat-tab-label>
+            Anexos
+            @if (anexosProcesso().length > 0) {
+              <span class="po-tab-contador">{{ anexosProcesso().length }}</span>
             }
-          </div>
-        }
-      </div>
-    }
+          </ng-template>
+          <div class="po-tab-conteudo">
+            <div class="po-card">
+              <div class="po-card-section-title">
+                <span>Anexos do Processo</span>
+                <span class="po-chip po-chip--neutral">Total: {{ anexosProcesso().length }}</span>
+              </div>
+              <div class="po-divider-gradient"></div>
 
-    <!-- Histórico (apenas papéis internos — HU01, o Mobilizador nunca vê a tramitação interna) -->
-    @if (!ehMobilizador() && tramitacoes().length > 0) {
-      <div class="po-card">
-        <div class="po-card-section-title">Histórico de Tramitação</div>
-        <div class="po-divider-gradient"></div>
+              @if (anexosProcesso().length === 0) {
+                <p class="po-hint">Nenhum anexo além do ofício inicial.</p>
+              }
 
-        @for (tramitacao of tramitacoes(); track tramitacao.id) {
-          <div class="po-historico-item">
-            <mat-icon>schedule</mat-icon>
-            <div>
-              <strong>{{ tramitacao.acao }}</strong>
-              <span>{{ tramitacao.para }} · {{ tramitacao.responsavelNome || 'Sistema' }} · {{ tramitacao.criadoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
-              @if (tramitacao.motivo) {
-                <p>{{ tramitacao.motivo }}</p>
+              @for (anexo of anexosProcesso(); track anexo.id) {
+                <div class="po-anexo-linha">
+                  <mat-icon class="po-anexo-linha__icone">picture_as_pdf</mat-icon>
+                  <div class="po-anexo-linha__info">
+                    <span class="po-anexo-linha__nome">{{ anexo.nomeArquivo }}</span>
+                    <span class="po-anexo-linha__meta">
+                      {{ tipoAnexoLabels[anexo.tipo] || anexo.tipo }} · {{ formatarTamanho(anexo.tamanhoBytes) }}
+                      · {{ anexo.enviadoEm | date: 'dd/MM/yyyy HH:mm' }}
+                      @if (anexo.enviadoPor) { · {{ anexo.enviadoPor }} }
+                    </span>
+                  </div>
+                  <button mat-stroked-button color="primary" type="button" (click)="abrirAnexo(anexo)">
+                    <mat-icon>visibility</mat-icon>
+                    Abrir
+                  </button>
+                </div>
               }
             </div>
           </div>
-        }
-      </div>
-    }
+        </mat-tab>
+
+        <mat-tab>
+          <ng-template mat-tab-label>
+            Aprovações
+            @if (tramitacoes().length > 0) {
+              <span class="po-tab-contador">{{ tramitacoes().length }}</span>
+            }
+          </ng-template>
+          <div class="po-tab-conteudo">
+            <div class="po-card">
+              <div class="po-card-section-title">Aprovações — Histórico de Tramitação</div>
+              <div class="po-divider-gradient"></div>
+
+              @if (tramitacoes().length === 0) {
+                <p class="po-hint">Ainda não há tramitações registradas.</p>
+              }
+
+              @for (tramitacao of tramitacoes(); track tramitacao.id) {
+                <div class="po-historico-item">
+                  <span class="po-historico-item__avatar">{{ iniciaisDe(tramitacao.responsavelNome) }}</span>
+                  <div class="po-historico-item__corpo">
+                    <div class="po-historico-item__topo">
+                      <strong class="po-historico-item__nome">{{ tramitacao.responsavelNome || 'Sistema' }}</strong>
+                      @if (tramitacao.responsavelPapel) {
+                        <span class="po-chip po-chip--neutral">{{ papelLabels[tramitacao.responsavelPapel] }}</span>
+                      }
+                      <span class="po-chip po-chip--info">{{ acaoTramitacaoLabels[tramitacao.acao] || tramitacao.acao }}</span>
+                    </div>
+                    <span class="po-historico-item__meta">
+                      {{ tramitacao.para }} · {{ tramitacao.criadoEm | date: 'dd/MM/yyyy' }} ·
+                      {{ tramitacao.criadoEm | date: 'HH:mm' }}
+                    </span>
+                    @if (tramitacao.motivo) {
+                      <p>{{ tramitacao.motivo }}</p>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          </div>
+        </mat-tab>
+      }
+    </mat-tab-group>
 
     <a mat-flat-button color="primary" routerLink="/painel">
       <mat-icon>arrow_back</mat-icon>
       Voltar ao Painel
     </a>
-  </ng-container>
+  }
 }

@@ -48,6 +48,16 @@
         (change)="alternarPush($event.checked)"
       ></mat-slide-toggle>
     </div>
+
+    <div class="po-config-canal">
+      <div class="po-config-canal__texto">
+        <span class="po-config-canal__titulo">Notificações por e-mail</span>
+        <span class="po-config-canal__descricao">
+          Avisos enviados para {{ usuario()?.email || 'o seu e-mail cadastrado' }}.
+        </span>
+      </div>
+      <mat-slide-toggle [checked]="canalEmail()" (change)="canalEmail.set($event.checked)"></mat-slide-toggle>
+    </div>
   </div>
 
   <div class="po-card">

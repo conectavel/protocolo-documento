@@ -6,7 +6,8 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatMenuModule } from '@angular/material/menu';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { AuthService } from '../core/services/auth.service';
-import { PAPEL_LABELS, Papel } from '../core/models';
+import { PAPEIS_PARCEIRO, PAPEL_LABELS, Papel } from '../core/models';
+import { AlertaTopoComponent } from '../shared/components/alerta-topo/alerta-topo.component';
 
 interface ItemNavegacao {
   rota: string;
@@ -34,6 +35,7 @@ interface ItemNavegacao {
     MatButtonModule,
     MatMenuModule,
     MatTooltipModule,
+    AlertaTopoComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './shell.component.html',
@@ -101,15 +103,24 @@ export class ShellComponent {
       rotulo: 'Pré Protocolo',
       somentePapeis: ['ASSESSOR', 'ADMIN'],
     },
+    {
+      rota: '/gerenciar-usuarios',
+      icone: 'manage_accounts',
+      rotulo: 'Gerenciar Usuários',
+      somentePapeis: ['ADMIN'],
+    },
     { rota: '/configuracoes', icone: 'settings', rotulo: 'Configurações' },
   ];
 
   readonly itensVisiveis = computed(() => {
     const papel = this.auth.papel();
-    const ehMobilizador = papel === 'MOBILIZADOR';
+    // Presidente do Sindicato tem a mesma autonomia do Mobilizador (pedido do
+    // cliente) — por isso os dois compartilham as mesmas regras de visibilidade
+    // de menu (ver PAPEIS_PARCEIRO).
+    const ehPapelParceiro = !!papel && PAPEIS_PARCEIRO.includes(papel);
     return this.itensNavegacao.filter((item) => {
-      if (item.somenteMobilizador) return ehMobilizador;
-      if (item.ocultoParaMobilizador && ehMobilizador) return false;
+      if (item.somenteMobilizador) return ehPapelParceiro;
+      if (item.ocultoParaMobilizador && ehPapelParceiro) return false;
       if (item.somentePapeis) return !!papel && item.somentePapeis.includes(papel);
       return true;
     });

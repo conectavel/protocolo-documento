@@ -28,8 +28,13 @@ export class Solicitacao {
   @Column({ name: 'numero_documento' })
   numeroDocumento: string; // ex.: 0010/2025
 
+  /**
+   * Identificador único e destacado de todo protocolo, gerado pelo próprio sistema
+   * (formato AAAAMMDD + sequência do dia, ex.: 20260902001) — não confundir com
+   * `numeroDocumento`, o número do ofício em si, que o Mobilizador pode informar.
+   */
   @Column({ name: 'numero_processo', nullable: true })
-  numeroProcesso: string; // ex.: 980638
+  numeroProcesso: string;
 
   @Column({ name: 'id_documento', nullable: true })
   idDocumento: string;
@@ -93,8 +98,31 @@ export class Solicitacao {
   @Column({ name: 'coordenador_designado_id', type: 'uuid', nullable: true })
   coordenadorDesignadoId: string | null;
 
+  /**
+   * Diretores explicitamente escolhidos pelo Superintendente no despacho (HU04) —
+   * só esses usuários podem direcionar os itens desta solicitação para uma
+   * Área/Programa (HU05). Cada item pode ir para uma Área diferente, então não
+   * existe mais um único "diretor da solicitação"; a designação vive aqui, no
+   * agregado raiz, e o roteamento em si vive por item (ver ItemSolicitacao).
+   */
+  @Column({ name: 'diretores_designados_ids', type: 'jsonb', default: () => "'[]'" })
+  diretoresDesignadosIds: string[];
+
   @Column({ name: 'motivo_devolucao_ou_recusa', type: 'text', nullable: true })
   motivoDevolucaoOuRecusa: string | null;
+
+  /**
+   * Presente quando este protocolo se originou de um e-mail recebido em
+   * superintendencia@senar-go.com.br (ver módulo `pre-protocolos`) em vez de ter
+   * sido protocolado diretamente pelo Mobilizador/Presidente — usado para exibir
+   * o selo "Oriundo de E-mail" nas telas de Protocolo.
+   */
+  @Column({ name: 'pre_protocolo_origem_id', type: 'uuid', nullable: true })
+  preProtocoloOrigemId: string | null;
+
+  /** E-mail de quem enviou o ofício original, para possível resposta/notificação (só quando veio de e-mail). */
+  @Column({ name: 'email_remetente_origem', type: 'varchar', nullable: true })
+  emailRemetenteOrigem: string | null;
 
   @OneToMany(() => ItemSolicitacao, (item) => item.solicitacao, { cascade: true })
   itens: ItemSolicitacao[];

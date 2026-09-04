@@ -3,10 +3,19 @@ export interface Parceiro {
   nome: string;
   presidenteId?: string;
   presidenteNome?: string;
-  mobilizadorId?: string;
-  mobilizadorNome?: string;
+  /**
+   * 1 Parceiro tem 1 ou mais Mobilizadores (regra de negócio) — por isso é uma
+   * lista, não um único "mobilizadorNome". Quem protocola em nome de um
+   * Mobilizador é sempre ele mesmo (usuario.mobilizadorId); esta lista serve
+   * para o Presidente escolher em nome de qual Mobilizador está protocolando.
+   */
+  mobilizadores?: { id: string; nome: string }[];
   coordenadorRegionalId?: string;
   coordenadorRegionalNome?: string;
+  /** Informações institucionais do Parceiro/Sindicato — cabeçalho/rodapé do ofício gerado. */
+  cnpj?: string;
+  endereco?: string;
+  telefone?: string;
 }
 
 export interface Mobilizador {

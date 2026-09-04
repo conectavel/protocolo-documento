@@ -28,6 +28,7 @@ export type StatusItem =
 
 export type Papel =
   | 'MOBILIZADOR'
+  | 'PRESIDENTE'
   | 'COORDENADOR_REGIONAL'
   | 'ASSESSOR'
   | 'SUPERINTENDENTE'
@@ -35,6 +36,13 @@ export type Papel =
   | 'GESTOR'
   | 'COORDENADOR'
   | 'ADMIN';
+
+/**
+ * Papéis externos ligados a um único Parceiro, com a mesma autonomia entre si —
+ * Presidente do Sindicato tem exatamente as mesmas permissões do Mobilizador
+ * (pedido explícito do cliente). Ver PAPEIS_PARCEIRO equivalente no backend.
+ */
+export const PAPEIS_PARCEIRO: Papel[] = ['MOBILIZADOR', 'PRESIDENTE'];
 
 // Grupos de agrupamento do painel do Mobilizador (HU01 / requirements.md §6)
 export type GrupoPainelMobilizador =
@@ -73,6 +81,7 @@ export const STATUS_ITEM_LABELS: Record<StatusItem, string> = {
 
 export const PAPEL_LABELS: Record<Papel, string> = {
   MOBILIZADOR: 'Mobilizador',
+  PRESIDENTE: 'Presidente do Sindicato',
   COORDENADOR_REGIONAL: 'Coordenador Regional',
   ASSESSOR: 'Assessor(a) do Superintendente',
   SUPERINTENDENTE: 'Superintendente',

@@ -7,6 +7,10 @@ export interface RmParceiroDto {
   presidenteRmCodigo: string;
   ativo: boolean;
   atualizadoEm: string;
+  /** Usados no cabeçalho/rodapé do PDF de ofício gerado (ver GeradorOficioService). */
+  cnpj?: string;
+  endereco?: string;
+  telefone?: string;
 }
 
 export interface RmPresidenteDto {

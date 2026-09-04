@@ -1,1 +1,7 @@
 @use '../protocolar-oficio/protocolar-oficio.component.scss';
+
+.po-card-section-title span {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}

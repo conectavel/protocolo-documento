@@ -24,6 +24,7 @@ export class PreferenciasNotificacaoService {
           usuarioId,
           canalSistema: true,
           canalPush: false,
+          canalEmail: false,
           tiposAtivos: tiposDisponiveis.map((t) => t.codigo),
         }),
       );
@@ -32,6 +33,7 @@ export class PreferenciasNotificacaoService {
     return {
       canalSistema: preferencia.canalSistema,
       canalPush: preferencia.canalPush,
+      canalEmail: preferencia.canalEmail,
       tiposAtivos: preferencia.tiposAtivos,
       tiposDisponiveis,
       atualizadoEm: preferencia.atualizadoEm,
@@ -49,6 +51,7 @@ export class PreferenciasNotificacaoService {
 
     preferencia.canalSistema = dto.canalSistema;
     preferencia.canalPush = dto.canalPush;
+    preferencia.canalEmail = dto.canalEmail;
     preferencia.tiposAtivos = tiposAtivos;
 
     await this.preferenciaRepo.save(preferencia);

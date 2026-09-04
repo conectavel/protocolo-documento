@@ -25,7 +25,7 @@ export const routes: Routes = [
       },
       {
         path: 'protocolar',
-        canActivate: [roleGuard(['MOBILIZADOR'])],
+        canActivate: [roleGuard(['MOBILIZADOR', 'PRESIDENTE'])],
         loadComponent: () =>
           import('./features/protocolar-oficio/protocolar-oficio.component').then(
             (m) => m.ProtocolarOficioComponent
@@ -99,6 +99,15 @@ export const routes: Routes = [
         loadComponent: () =>
           import('./features/substitutos/substitutos.component').then((m) => m.SubstitutosComponent),
         title: 'Substitutos',
+      },
+      {
+        path: 'gerenciar-usuarios',
+        canActivate: [roleGuard(['ADMIN'])],
+        loadComponent: () =>
+          import('./features/gerenciar-usuarios/gerenciar-usuarios.component').then(
+            (m) => m.GerenciarUsuariosComponent
+          ),
+        title: 'Gerenciar Usuários',
       },
     ],
   },

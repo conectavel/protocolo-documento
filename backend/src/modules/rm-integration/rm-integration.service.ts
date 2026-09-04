@@ -40,7 +40,7 @@ export class RmIntegrationService {
     await this.sincronizarCoordenadoresRegionais(atualizadoDesde);
     await this.sincronizarPresidentes(atualizadoDesde);
     await this.sincronizarParceiros(atualizadoDesde); // depende de coordenadores/presidentes já upsertados
-    await this.sincronizarMobilizadores(atualizadoDesde); // popula parceiro.mobilizadorId
+    await this.sincronizarMobilizadores(atualizadoDesde); // vincula cada Mobilizador ao seu Parceiro
   }
 
   async sincronizarCoordenadoresRegionais(atualizadoDesde?: Date): Promise<void> {
@@ -107,6 +107,9 @@ export class RmIntegrationService {
           rmCodigo: item.rmCodigo,
           sigla: item.sigla,
           razaoSocial: item.razaoSocial,
+          cnpj: item.cnpj,
+          endereco: item.endereco,
+          telefone: item.telefone,
           ativo: item.ativo,
           coordenadorRegionalId: coordenador.id,
           presidenteId: presidente.id,
@@ -131,7 +134,9 @@ export class RmIntegrationService {
         continue;
       }
 
-      const mobilizador = await this.upsertRegistro(
+      // Um Parceiro tem 1 ou mais Mobilizadores — o vínculo fica só do lado do
+      // Mobilizador (parceiroId), sem nada para propagar de volta ao Parceiro.
+      await this.upsertRegistro(
         this.mobilizadorRepo,
         { rmCodigo: item.rmCodigo },
         {
@@ -145,12 +150,6 @@ export class RmIntegrationService {
         'MOBILIZADOR',
         item.rmCodigo,
       );
-
-      // Regra de negócio: 1 Parceiro possui exatamente 1 Mobilizador.
-      if (parceiro.mobilizadorId !== mobilizador.id) {
-        parceiro.mobilizadorId = mobilizador.id;
-        await this.parceiroRepo.save(parceiro);
-      }
     }
   }
 

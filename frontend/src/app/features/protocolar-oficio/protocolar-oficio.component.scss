@@ -1,3 +1,18 @@
+// Linha "Tipo + Título + Data início + Data fim" (Patrocínio/Solicitação de
+// Itens/Convite): larguras desiguais em vez das 3 colunas iguais do .po-grid
+// — Tipo bem estreito, Título ocupa a maior parte, as datas ficam pequenas
+// (poucos dígitos), tudo na mesma linha.
+.po-tipo-titulo-datas {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: 1fr 3fr 1fr 1fr;
+  gap: var(--grid-gap);
+
+  @media (max-width: 960px) {
+    grid-template-columns: 1fr;
+  }
+}
+
 .po-hint {
   font-size: 12px;
   color: var(--color-text-secondary);
@@ -45,6 +60,10 @@
       color: var(--color-accent);
     }
   }
+
+  &__botao-gerar {
+    height: 44px;
+  }
 }
 
 .po-add-item-row {
@@ -59,38 +78,105 @@
   }
 }
 
+// Grade de caixas (mesmo padrão do .po-cards-grid do Painel de Protocolo de
+// Ofício), não mais uma lista de linhas horizontais.
 .po-itens-lista {
   margin-top: 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 16px;
 }
 
-.po-nested-block {
-  &__cabecalho {
+// Card de item quadrado — ícone + rótulo do tipo no topo, título/detalhes no
+// meio, Editar/Remover fixados no rodapé — no mesmo estilo do card do Painel.
+.po-item-card {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-list-card);
+  padding: 16px;
+  background: var(--color-surface);
+  box-shadow: var(--shadow-card);
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+
+  &:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+
+  &--editando {
+    border-color: var(--color-primary);
+    box-shadow: 0 0 0 3px rgba(13, 148, 136, 0.15);
+  }
+
+  &__header {
     display: flex;
     align-items: center;
-    gap: 12px;
-    margin-bottom: 8px;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  &__icone {
+    width: 36px;
+    height: 36px;
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+
+    .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &--ACAO_ATIVIDADE {
+      background: rgba(37, 99, 235, 0.12);
+      color: var(--row-icon-1);
+    }
+    &--PATROCINIO {
+      background: rgba(249, 115, 22, 0.12);
+      color: var(--row-icon-2);
+    }
+    &--SOLICITACAO_ITENS {
+      background: rgba(13, 148, 136, 0.12);
+      color: var(--row-icon-6);
+    }
+    &--CONVITE {
+      background: rgba(147, 51, 234, 0.12);
+      color: var(--row-icon-4);
+    }
+  }
+
+  &__chip {
+    flex: 1;
   }
 
   &__titulo {
-    font-size: 14px;
+    font-size: 15px;
     font-weight: 600;
     color: var(--color-text-primary);
+    margin: 0 0 6px;
+    overflow-wrap: break-word;
   }
 
   &__linha {
     font-size: 13px;
     color: var(--color-text-secondary);
-    margin: 2px 0;
+    margin: 0 0 4px;
+    overflow-wrap: break-word;
   }
 
-  &__remover {
-    position: absolute;
-    right: 16px;
-    bottom: 16px;
-  }
-}
+  &__footer {
+    display: flex;
+    gap: 8px;
+    margin-top: auto;
+    padding-top: 12px;
 
-.po-nested-block {
-  position: relative;
-  padding-bottom: 48px;
+    button {
+      flex: 1;
+      white-space: nowrap;
+    }
+  }
 }

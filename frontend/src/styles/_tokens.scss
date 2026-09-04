@@ -162,6 +162,8 @@ $po-dark-theme: mat.m2-define-dark-theme(
   --chip-warning-text: #92400e;
   --chip-neutral-bg: #e2e8f0;
   --chip-neutral-text: #334155;
+  --chip-info-bg: #dbeafe;
+  --chip-info-text: #1d4ed8;
 
   --banner-bg: #fffbeb;
   --banner-border: #fde68a;
@@ -235,6 +237,8 @@ $po-dark-theme: mat.m2-define-dark-theme(
   --chip-warning-text: #fde68a;
   --chip-neutral-bg: #1e293b;
   --chip-neutral-text: #cbd5e1;
+  --chip-info-bg: rgba(29, 78, 216, 0.35);
+  --chip-info-text: #93c5fd;
 
   --banner-bg: rgba(69, 26, 3, 0.4);
   --banner-border: #92400e;

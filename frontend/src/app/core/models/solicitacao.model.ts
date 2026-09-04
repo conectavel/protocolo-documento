@@ -1,4 +1,4 @@
-import { StatusItem, StatusMacro, TipoItem } from './enums';
+import { Papel, StatusItem, StatusMacro, TipoItem } from './enums';
 
 /**
  * Devolutiva registrada pelo Coordenador da Ação/Programa (HU07/HU09).
@@ -37,6 +37,15 @@ export interface ItemSolicitacao {
   disciplina?: string;
   turno?: string;
 
+  // Específico de Solicitação de Itens
+  quantidade?: number;
+
+  // Específicos de Convite
+  hora?: string;
+  local?: string;
+  responsavel?: string;
+  telefone?: string;
+
   // Estado do item (HU08) — ausente/irrelevante para o Mobilizador em telas de listagem
   statusItem?: StatusItem;
   areaProgramaId?: string;
@@ -44,6 +53,30 @@ export interface ItemSolicitacao {
   coordenadorId?: string;
   coordenadorNome?: string;
   devolutiva?: Devolutiva;
+
+  /**
+   * Retrato dos campos preenchidos pelo Mobilizador/Presidente no protocolo —
+   * o Coordenador pode corrigir os campos acima; isto aqui nunca muda depois
+   * de criado, e serve só para o histórico discreto de alterações na tela.
+   */
+  valoresOriginais?: {
+    tipoEvento?: string;
+    acaoAtividade?: string;
+    disciplina?: string;
+    turno?: string;
+    dataInicio?: string;
+    dataFim?: string;
+  } | null;
+}
+
+/** Payload de EditarItem — o Coordenador corrige campos preenchidos pelo Mobilizador/Presidente. */
+export interface EditarItemRequest {
+  tipoEvento?: string;
+  acaoAtividade?: string;
+  disciplina?: string;
+  turno?: string;
+  dataInicio?: string;
+  dataFim?: string;
 }
 
 /**
@@ -59,12 +92,14 @@ export interface Tramitacao {
   acao: string;
   motivo?: string;
   responsavelNome?: string;
+  responsavelPapel?: Papel;
   criadoEm: string;
 }
 
 export interface Solicitacao {
   id: string;
-  numeroProtocolo?: string;
+  /** Identificador único e destacado do protocolo, gerado pelo sistema (AAAAMMDD + sequência do dia). */
+  numeroProcesso?: string;
 
   parceiroId: string;
   parceiroNome?: string;
@@ -88,6 +123,13 @@ export interface Solicitacao {
    */
   etapaAtual?: string;
 
+  /**
+   * Diretores escolhidos pelo Superintendente no despacho (HU04) — só eles
+   * podem direcionar os itens desta solicitação para uma Área/Programa.
+   * Ausente para o Mobilizador (HU01), igual a etapaAtual.
+   */
+  diretoresDesignadosIds?: string[];
+
   itens: ItemSolicitacao[];
 
   criadoEm: string;
@@ -96,6 +138,11 @@ export interface Solicitacao {
   alteradoPor?: string;
 
   avancoAutomatico?: boolean;
+
+  /** Presente quando este protocolo se originou de um e-mail recebido (ver Pré Protocolo). */
+  preProtocoloOrigemId?: string;
+  /** E-mail de quem enviou o ofício original — só quando veio de e-mail (preProtocoloOrigemId presente). */
+  emailRemetenteOrigem?: string;
 }
 
 export interface CriarSolicitacaoRequest {
@@ -110,18 +157,33 @@ export interface CriarSolicitacaoRequest {
   itens: ItemSolicitacao[];
 }
 
+/** Um item excluído do fluxo, com uma devolutiva/observação opcional explicando o motivo. */
+export interface ItemExcluidoRequest {
+  itemId: string;
+  observacao?: string;
+  /** Omitido = Não Atendido (excluído). Convite (exclusivo da Assessoria) pode ser ATENDIDO diretamente. */
+  resultado?: 'ATENDIDO' | 'PARCIALMENTE_ATENDIDO' | 'NAO_ATENDIDO';
+}
+
 export interface AnaliseAssessoriaRequest {
   decisao: 'APROVAR' | 'DEVOLVER_AJUSTE' | 'RECUSAR';
   motivo?: string;
+  /** Itens que a Assessoria decidiu não incluir no fluxo (ficam "Parcialmente Atendido" automaticamente). */
+  itensExcluidos?: ItemExcluidoRequest[];
 }
 
 export interface DespachoSuperintendenteRequest {
   diretoriaDestino: 'EDUCACIONAL';
+  diretoresIds: string[];
+  /** Itens que o Superintendente decidiu não incluir no fluxo (ficam "Parcialmente Atendido" automaticamente). */
+  itensExcluidos?: ItemExcluidoRequest[];
 }
 
+/** Direciona UM item específico — cada item de uma solicitação pode ir para uma Área diferente. */
 export interface DirecionamentoDiretorRequest {
   areaProgramaId: string;
   coordenadorId?: string;
+  observacao?: string;
 }
 
 export interface DesignarCoordenadorRequest {

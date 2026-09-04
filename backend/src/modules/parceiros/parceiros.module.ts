@@ -5,12 +5,13 @@ import { Presidente } from './entities/presidente.entity';
 import { Mobilizador } from './entities/mobilizador.entity';
 import { CoordenadorRegional } from './entities/coordenador-regional.entity';
 import { AreaPrograma } from './entities/area-programa.entity';
+import { Usuario } from '../usuarios/entities/usuario.entity';
 import { ParceirosService } from './parceiros.service';
 import { ParceirosController } from './parceiros.controller';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Parceiro, Presidente, Mobilizador, CoordenadorRegional, AreaPrograma]),
+    TypeOrmModule.forFeature([Parceiro, Presidente, Mobilizador, CoordenadorRegional, AreaPrograma, Usuario]),
   ],
   controllers: [ParceirosController],
   providers: [ParceirosService],

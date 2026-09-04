@@ -2,7 +2,7 @@ import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
 import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { Anexo, AnexoMetadados, TipoAnexo } from '../models';
+import { Anexo, AnexoMetadados, GerarOficioModeloRequest, TipoAnexo } from '../models';
 
 @Injectable({ providedIn: 'root' })
 export class AnexosService {
@@ -15,6 +15,15 @@ export class AnexosService {
     formData.append('arquivo', arquivo);
     formData.append('tipo', tipo);
     return this.http.post<Anexo>(`${this.baseUrl}/anexos`, formData);
+  }
+
+  /**
+   * Gera um PDF de ofício padrão a partir do que já foi preenchido na tela
+   * (Dados do Documento + Itens) e o salva como anexo — alternativa ao
+   * upload manual quando o Parceiro/Sindicato não tem um documento próprio.
+   */
+  gerarModelo(dados: GerarOficioModeloRequest): Observable<Anexo> {
+    return this.http.post<Anexo>(`${this.baseUrl}/anexos/gerar-modelo`, dados);
   }
 
   buscarMetadados(anexoId: string): Observable<AnexoMetadados> {

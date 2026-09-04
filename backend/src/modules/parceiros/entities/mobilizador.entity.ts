@@ -1,10 +1,11 @@
-import { Column, Entity, JoinColumn, OneToOne, PrimaryGeneratedColumn } from 'typeorm';
+import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { Parceiro } from './parceiro.entity';
 
 /**
  * Espelho local do Mobilizador. Fonte oficial: RM/ACORP.
  * Regra de negócio (confirmada pelo cliente): 1 Mobilizador pertence a exatamente 1 Parceiro
- * (e, por consequência, ao Coordenador Regional desse Parceiro).
+ * (e, por consequência, ao Coordenador Regional desse Parceiro) — mas um Parceiro
+ * normalmente tem MAIS DE UM Mobilizador (ver Parceiro.mobilizadores).
  */
 @Entity('mobilizadores')
 export class Mobilizador {
@@ -26,7 +27,7 @@ export class Mobilizador {
   @Column({ name: 'parceiro_id', nullable: true })
   parceiroId: string;
 
-  @OneToOne(() => Parceiro, (parceiro) => parceiro.mobilizador)
+  @ManyToOne(() => Parceiro, (parceiro) => parceiro.mobilizadores)
   @JoinColumn({ name: 'parceiro_id' })
   parceiro: Parceiro;
 

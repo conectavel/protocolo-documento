@@ -106,6 +106,9 @@ async function seed() {
       rmCodigo: 'PARC-FAEG',
       sigla: 'FAEG',
       razaoSocial: 'Federação da Agricultura e Pecuária do Estado de Goiás',
+      cnpj: '33.638.735/0001-02',
+      endereco: 'Rua Professor Jurandir, quadra 26, lote 1D, Centro, Hidrolândia/GO. CEP 75.340-000',
+      telefone: '(62) 99356-5501',
       coordenadorRegionalId: coordenadorRegional.id,
       presidenteId: presidente.id,
     }),
@@ -120,8 +123,16 @@ async function seed() {
     }),
   );
 
-  parceiro.mobilizadorId = mobilizador.id;
-  await parceiroRepo.save(parceiro);
+  // Um Parceiro tem 1 ou mais Mobilizadores — um segundo aqui só para deixar
+  // isso visível em desenvolvimento (o login de exemplo usa o Marcos Santos).
+  await mobilizadorRepo.save(
+    mobilizadorRepo.create({
+      rmCodigo: 'MOB-002',
+      nome: 'Juliana Ferreira',
+      email: 'juliana.ferreira@faeg.com.br',
+      parceiroId: parceiro.id,
+    }),
+  );
 
   const senhaPadrao = await bcrypt.hash('senar@123', 10);
 
@@ -161,6 +172,13 @@ async function seed() {
     );
     areasPorCodigo.set(def.codigo, area);
 
+    // O Gestor só consegue agir sobre os itens da própria área se o próprio
+    // usuário dele também tiver areaProgramaId preenchido (é isso que o RBAC
+    // compara em exigirMesmaArea) — sem isso, `gestorId` na Área aponta pra
+    // ele, mas ele mesmo não "pertence" a nenhuma área do ponto de vista do JWT.
+    gestorUsuario.areaProgramaId = area.id;
+    await usuarioRepo.save(gestorUsuario);
+
     for (const nomeCoordenador of def.coordenadores) {
       const coordenadorUsuario = await usuarioRepo.save(
         usuarioRepo.create({
@@ -199,6 +217,17 @@ async function seed() {
       papel: Papel.DIRETOR_EDUCACIONAL,
     }),
   );
+  // Segundo Diretor — o Superintendente pode designar mais de um Diretor
+  // responsável por uma mesma solicitação (HU04), cada um encaminhando os
+  // itens do time dele; precisa de pelo menos 2 usuários para testar a seleção.
+  const diretorEducacional2 = await usuarioRepo.save(
+    usuarioRepo.create({
+      nome: 'Patrícia Nogueira',
+      email: 'patricia.nogueira@senar-go.com.br',
+      senhaHash: senhaPadrao,
+      papel: Papel.DIRETOR_EDUCACIONAL,
+    }),
+  );
   await usuarioRepo.save(
     usuarioRepo.create({
       nome: 'Administrador',
@@ -226,6 +255,17 @@ async function seed() {
       rmCodigoReferencia: mobilizador.rmCodigo,
     }),
   );
+  // Presidente do Sindicato — mesma autonomia do Mobilizador (pedido do cliente),
+  // login vinculado ao Presidente já sincronizado do RM.
+  await usuarioRepo.save(
+    usuarioRepo.create({
+      nome: presidente.nome,
+      email: 'eduardo.araujo@senar-go.com.br',
+      senhaHash: senhaPadrao,
+      papel: Papel.PRESIDENTE,
+      rmCodigoReferencia: presidente.rmCodigo,
+    }),
+  );
 
   // ---------------------------------------------------------------------
   // 4 solicitações de exemplo, uma parada em cada etapa do fluxo (macro),
@@ -236,6 +276,18 @@ async function seed() {
   const claudimeire = usuariosPorNome.get('Claudimeire')!;
 
   const agora = Date.now();
+
+  /** Mesmo formato AAAAMMDD + sequência do dia usado por SolicitacoesService.gerarNumeroProcesso. */
+  const contadoresNumeroProcessoPorDia = new Map<string, number>();
+  function numeroProcessoDe(data: Date): string {
+    const ano = data.getFullYear();
+    const mes = String(data.getMonth() + 1).padStart(2, '0');
+    const dia = String(data.getDate()).padStart(2, '0');
+    const chave = `${ano}${mes}${dia}`;
+    const sequencia = (contadoresNumeroProcessoPorDia.get(chave) ?? 0) + 1;
+    contadoresNumeroProcessoPorDia.set(chave, sequencia);
+    return `${chave}${String(sequencia).padStart(3, '0')}`;
+  }
 
   async function criarAnexoOficio(nomeArquivo: string): Promise<Anexo> {
     const uploadDir = process.env.UPLOAD_DIR ?? './storage/anexos';
@@ -275,6 +327,7 @@ async function seed() {
         motivo: dados.motivo,
         usuarioId: dados.usuario?.id,
         usuarioNome: dados.usuario?.nome ?? 'Sistema (automático)',
+        usuarioPapel: dados.usuario?.papel ?? null,
       }),
     );
     // @CreateDateColumn sempre grava a data real do insert — sobrescreve depois
@@ -293,7 +346,7 @@ async function seed() {
     const solicitacao = await solicitacaoRepo.save(
       solicitacaoRepo.create({
         numeroDocumento: '0001/2026',
-        numeroProcesso: '980001',
+        numeroProcesso: numeroProcessoDe(dataSolicitacao),
         idDocumento: '2359301',
         parceiroId: parceiro.id,
         mobilizadorId: mobilizador.id,
@@ -331,7 +384,7 @@ async function seed() {
     const solicitacao = await solicitacaoRepo.save(
       solicitacaoRepo.create({
         numeroDocumento: '0002/2026',
-        numeroProcesso: '980002',
+        numeroProcesso: numeroProcessoDe(dataSolicitacao),
         idDocumento: '2359302',
         parceiroId: parceiro.id,
         mobilizadorId: mobilizador.id,
@@ -368,6 +421,73 @@ async function seed() {
     });
   }
 
+  // 2.5) Em Despacho — aprovado pela Assessoria, aguardando o Superintendente
+  // escolher os Diretores responsáveis (HU04). Tem 2 itens de naturezas
+  // diferentes de propósito, para demonstrar a bifurcação por item entre
+  // Diretores/Áreas distintas assim que o despacho for feito pela UI.
+  {
+    const anexo = await criarAnexoOficio('oficio-0025-2026.pdf');
+    const dataSolicitacao = new Date(agora - 3 * 24 * HORA);
+    const dataCiencia = new Date(agora - 3 * 24 * HORA + 2 * HORA);
+    const dataAprovacao = new Date(agora - 2 * 24 * HORA);
+
+    const solicitacao = await solicitacaoRepo.save(
+      solicitacaoRepo.create({
+        numeroDocumento: '0025/2026',
+        numeroProcesso: numeroProcessoDe(dataSolicitacao),
+        idDocumento: '2359325',
+        parceiroId: parceiro.id,
+        mobilizadorId: mobilizador.id,
+        municipio: 'Jataí',
+        assunto: 'Curso de Formação Profissional e visita técnica ATeG',
+        observacao: 'Duas frentes de trabalho: uma turma de formação e uma visita técnica.',
+        dataDocumento: dataSolicitacao.toISOString().slice(0, 10),
+        anexoOficioId: anexo.id,
+        statusMacro: StatusMacro.EM_DESPACHO,
+        etapaAtual: 'Superintendência — Despacho',
+        dataSolicitacao,
+        prazoCienciaRegional: new Date(dataSolicitacao.getTime() + 24 * HORA),
+        dataCienciaRegional: dataCiencia,
+        cienciaAutomatica: false,
+        criadoPor: mobilizador.nome,
+        alteradoPor: assessor.nome,
+        itens: [
+          itemRepo.create({
+            tipo: TipoItem.ACAO_ATIVIDADE,
+            tipoEvento: 'Campo em Ordem - FPR',
+            acaoAtividade: 'FPRPE - Programas Especiais',
+            disciplina: 'Formação Profissional Rural',
+            turno: Turno.MANHA,
+            statusItem: StatusItem.PENDENTE,
+          }),
+          itemRepo.create({
+            tipo: TipoItem.ACAO_ATIVIDADE,
+            tipoEvento: 'ATeG',
+            acaoAtividade: 'Visita técnica a propriedades rurais',
+            disciplina: 'Assistência Técnica e Gerencial',
+            turno: Turno.TARDE,
+            statusItem: StatusItem.PENDENTE,
+          }),
+        ],
+      }),
+    );
+    await anexoRepo.update({ id: anexo.id }, { solicitacaoId: solicitacao.id });
+    await registrarTramitacao(solicitacao, {
+      deEtapa: 'Análise do Regional',
+      paraEtapa: 'Análise da Assessoria',
+      acao: AcaoTramitacao.CIENCIA,
+      usuario: coordenadorRegionalUsuario,
+      criadoEm: dataCiencia,
+    });
+    await registrarTramitacao(solicitacao, {
+      deEtapa: 'Análise da Assessoria',
+      paraEtapa: 'Superintendência — Despacho',
+      acao: AcaoTramitacao.APROVAR,
+      usuario: assessor,
+      criadoEm: dataAprovacao,
+    });
+  }
+
   // 3) Em Execução — aprovado, despachado e direcionado; Coordenador da FPR já designado.
   {
     const anexo = await criarAnexoOficio('oficio-0003-2026.pdf');
@@ -380,7 +500,7 @@ async function seed() {
     const solicitacao = await solicitacaoRepo.save(
       solicitacaoRepo.create({
         numeroDocumento: '0003/2026',
-        numeroProcesso: '980003',
+        numeroProcesso: numeroProcessoDe(dataSolicitacao),
         idDocumento: '2359303',
         parceiroId: parceiro.id,
         mobilizadorId: mobilizador.id,
@@ -460,7 +580,7 @@ async function seed() {
     const solicitacao = await solicitacaoRepo.save(
       solicitacaoRepo.create({
         numeroDocumento: '0004/2026',
-        numeroProcesso: '980004',
+        numeroProcesso: numeroProcessoDe(dataSolicitacao),
         idDocumento: '2359304',
         parceiroId: parceiro.id,
         mobilizadorId: mobilizador.id,

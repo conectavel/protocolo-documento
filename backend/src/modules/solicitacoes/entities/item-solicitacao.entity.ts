@@ -58,6 +58,39 @@ export class ItemSolicitacao {
   @Column({ name: 'data_fim', type: 'date', nullable: true })
   dataFim: string;
 
+  /** Específico de Solicitação de Itens — quantos itens estão sendo solicitados. */
+  @Column({ type: 'int', nullable: true })
+  quantidade: number | null;
+
+  // Campos específicos de Convite
+  @Column({ type: 'varchar', nullable: true })
+  hora: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  local: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  responsavel: string | null;
+
+  @Column({ type: 'varchar', nullable: true })
+  telefone: string | null;
+
+  /**
+   * Retrato dos campos preenchidos pelo Mobilizador/Presidente no momento do
+   * protocolo — o Coordenador pode editar os campos acima (o que passa a
+   * valer é sempre o valor atual), mas este retrato nunca muda depois de
+   * criado, para compor o histórico discreto de alterações na tela.
+   */
+  @Column({ name: 'valores_originais', type: 'jsonb', nullable: true })
+  valoresOriginais: {
+    tipoEvento?: string;
+    acaoAtividade?: string;
+    disciplina?: string;
+    turno?: Turno;
+    dataInicio?: string;
+    dataFim?: string;
+  } | null;
+
   @Column({
     type: 'enum',
     enum: StatusItem,

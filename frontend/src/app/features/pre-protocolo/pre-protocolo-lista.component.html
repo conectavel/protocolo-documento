@@ -9,30 +9,128 @@
   </p>
 </div>
 
+<div class="po-tabs">
+  @for (aba of abas; track aba.chave) {
+    <button
+      type="button"
+      class="po-tabs__item"
+      [class.po-tabs__item--active]="abaAtiva() === aba.chave"
+      (click)="selecionarAba(aba.chave)"
+    >
+      {{ aba.rotulo }}
+    </button>
+  }
+</div>
+
+<mat-expansion-panel class="po-filtros" [expanded]="true">
+  <mat-expansion-panel-header>
+    <mat-panel-title>
+      <mat-icon>filter_alt</mat-icon>
+      Filtros
+    </mat-panel-title>
+  </mat-expansion-panel-header>
+
+  <form [formGroup]="filtros" class="po-grid" (ngSubmit)="filtrar()">
+    @if (abaAtiva() === 'ENTRADA') {
+      <mat-form-field appearance="outline">
+        <mat-label>Status</mat-label>
+        <mat-select formControlName="statusEntrada">
+          <mat-option value="PENDENTE">Pendente</mat-option>
+          <mat-option value="DESCARTADO">Descartado</mat-option>
+        </mat-select>
+      </mat-form-field>
+    }
+    <mat-form-field appearance="outline">
+      <mat-label>Remetente</mat-label>
+      <input matInput formControlName="remetente" placeholder="e-mail de quem enviou" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Assunto</mat-label>
+      <input matInput formControlName="assunto" />
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Recebido — início</mat-label>
+      <input matInput [matDatepicker]="pickerInicio" formControlName="dataInicio" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+      <mat-datepicker #pickerInicio></mat-datepicker>
+    </mat-form-field>
+    <mat-form-field appearance="outline">
+      <mat-label>Recebido — fim</mat-label>
+      <input matInput [matDatepicker]="pickerFim" formControlName="dataFim" />
+      <mat-datepicker-toggle matIconSuffix [for]="pickerFim"></mat-datepicker-toggle>
+      <mat-datepicker #pickerFim></mat-datepicker>
+    </mat-form-field>
+  </form>
+
+  <div class="po-filtros__rodape">
+    <span></span>
+    <div class="po-filtros__acoes">
+      <button mat-stroked-button type="button" (click)="limparFiltros()">
+        <mat-icon>filter_alt_off</mat-icon>
+        Limpar Filtros
+      </button>
+      <button mat-flat-button color="primary" type="button" (click)="filtrar()">
+        <mat-icon>search</mat-icon>
+        Filtrar
+      </button>
+    </div>
+  </div>
+</mat-expansion-panel>
+
 @if (carregando()) {
   <app-loading-state mensagem="Carregando pré-protocolos…"></app-loading-state>
-} @else if (pendentes().length === 0) {
-  <app-empty-state mensagem="Nenhum pré-protocolo pendente"></app-empty-state>
+} @else if (registros().length === 0) {
+  <app-empty-state
+    [mensagem]="abaAtiva() === 'ENTRADA' ? 'Nenhum e-mail encontrado com esses filtros' : 'Nenhum protocolo iniciado a partir de e-mail encontrado'"
+  ></app-empty-state>
 } @else {
-  @for (registro of pendentes(); track registro.id) {
+  @for (registro of registros(); track registro.id) {
     <div class="po-card pre-protocolo-card">
       <div class="pre-protocolo-card__topo">
         <div>
-          <div class="po-card-section-title">{{ registro.assunto }}</div>
+          <div class="po-card-section-title">
+            {{ registro.assunto }}
+            @if (registro.status === 'DESCARTADO') {
+              <span class="po-chip po-chip--neutral">Descartado</span>
+            }
+          </div>
           <p class="po-hint">
             De: <strong>{{ registro.remetente }}</strong> · Recebido em
             {{ registro.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}
           </p>
+          @if (registro.status === 'DESCARTADO' && registro.motivoDescarte) {
+            <p class="po-hint po-hint--erro">Motivo do descarte: {{ registro.motivoDescarte }}</p>
+          }
+          @if (registro.solicitacaoGerada; as sg) {
+            <p class="po-hint">
+              Virou o protocolo
+              @if (sg.numeroProcesso) {
+                <strong>Nº {{ sg.numeroProcesso }}</strong>
+              } @else {
+                <strong>{{ sg.numeroDocumento }}</strong>
+              }
+              — {{ statusMacroLabels[sg.statusMacro] }}
+            </p>
+          }
         </div>
         <div class="pre-protocolo-card__acoes">
-          <button mat-stroked-button color="warn" type="button" (click)="descartar(registro)">
-            <mat-icon>delete_outline</mat-icon>
-            Descartar
-          </button>
-          <button mat-flat-button color="primary" type="button" (click)="converter(registro)">
-            <mat-icon>arrow_forward</mat-icon>
-            Converter em Protocolo
-          </button>
+          @if (registro.status === 'PENDENTE') {
+            <button mat-stroked-button color="warn" type="button" (click)="descartar(registro)">
+              <mat-icon>delete_outline</mat-icon>
+              Descartar
+            </button>
+            <button mat-flat-button color="primary" type="button" (click)="converter(registro)">
+              <mat-icon>arrow_forward</mat-icon>
+              Converter em Protocolo
+            </button>
+          } @else {
+            @if (registro.solicitacaoGerada; as sg) {
+              <a mat-stroked-button color="primary" [routerLink]="['/solicitacoes', sg.id]">
+                <mat-icon>visibility</mat-icon>
+                Ver Protocolo
+              </a>
+            }
+          }
         </div>
       </div>
       <div class="po-divider-gradient"></div>
@@ -48,4 +146,13 @@
       }
     </div>
   }
+
+  <mat-paginator
+    class="po-paginator"
+    [length]="total()"
+    [pageSize]="pageSize()"
+    [pageIndex]="page() - 1"
+    [pageSizeOptions]="[12, 24, 48]"
+    (page)="aoMudarPagina($event)"
+  ></mat-paginator>
 }

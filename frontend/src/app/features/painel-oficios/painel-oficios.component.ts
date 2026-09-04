@@ -22,9 +22,11 @@ import {
   AbaPainel,
   AreaPrograma,
   CoordenadorRegional,
+  PAPEIS_PARCEIRO,
   Parceiro,
   Solicitacao,
   STATUS_MACRO_LABELS,
+  StatusMacro,
   TIPO_ITEM_LABELS,
   TipoItem,
   abaDoStatusMacro,
@@ -46,6 +48,15 @@ const ABAS: AbaConfig[] = [
   { chave: 'PARCIALMENTE', rotulo: 'Parcialmente' },
   { chave: 'NAO_ATENDIDOS', rotulo: 'Não Atendidos' },
   { chave: 'CANCELADOS', rotulo: 'Cancelados' },
+];
+
+/** Status em que a solicitação ainda está "em tramitação" — faz sentido mostrar o botão. */
+const STATUS_EM_ANDAMENTO: StatusMacro[] = [
+  'EM_ANALISE_REGIONAL',
+  'EM_ANALISE_ASSESSORIA',
+  'DEVOLVIDO_AJUSTE',
+  'EM_DESPACHO',
+  'EM_EXECUCAO',
 ];
 
 /**
@@ -105,7 +116,11 @@ export class PainelOficiosComponent implements OnInit {
   readonly areasPrograma = signal<AreaPrograma[]>([]);
 
   readonly papel = computed(() => this.auth.papel());
-  readonly ehMobilizador = computed(() => this.papel() === 'MOBILIZADOR');
+  // Presidente do Sindicato tem a mesma autonomia do Mobilizador (pedido do cliente).
+  readonly ehMobilizador = computed(() => {
+    const papel = this.papel();
+    return !!papel && PAPEIS_PARCEIRO.includes(papel);
+  });
   readonly abasVisiveis = computed(() =>
     ABAS.filter((aba) => !aba.somenteInterno || !this.ehMobilizador())
   );
@@ -240,6 +255,51 @@ export class PainelOficiosComponent implements OnInit {
 
   contarItensPorTipo(solicitacao: Solicitacao, tipo: TipoItem): number {
     return solicitacao.itens.filter((item) => item.tipo === tipo).length;
+  }
+
+  /** A solicitação ainda está correndo pelo fluxo (nem finalizada, nem cancelada). */
+  emTramitacao(solicitacao: Solicitacao): boolean {
+    return STATUS_EM_ANDAMENTO.includes(solicitacao.statusMacro);
+  }
+
+  /**
+   * Se o usuário logado tem uma ação pendente NESTA solicitação agora — espelha,
+   * de forma simplificada, as mesmas condições usadas no Detalhe da Solicitação
+   * (podeDarCiencia/podeAnalisarAssessoria/podeDespachar/podeDirecionar e as
+   * verificações por item de Gestor/Coordenador) para decidir se o botão do
+   * card deve chamar para ação ("Realizar Tramitação") ou só indicar que o
+   * processo está em andamento com outra pessoa ("Em Tramitação").
+   */
+  podeTramitar(solicitacao: Solicitacao): boolean {
+    const papel = this.papel();
+    if (!papel) return false;
+    const usuario = this.auth.usuario();
+
+    switch (papel) {
+      case 'COORDENADOR_REGIONAL':
+        return solicitacao.statusMacro === 'EM_ANALISE_REGIONAL';
+      case 'ASSESSOR':
+        return solicitacao.statusMacro === 'EM_ANALISE_ASSESSORIA';
+      case 'SUPERINTENDENTE':
+      case 'DIRETOR_EDUCACIONAL':
+        return solicitacao.statusMacro === 'EM_DESPACHO';
+      case 'GESTOR':
+        return solicitacao.itens.some(
+          (item) => item.areaProgramaId === usuario?.areaProgramaId && !item.coordenadorId && !item.devolutiva,
+        );
+      case 'COORDENADOR':
+        return solicitacao.itens.some((item) => item.coordenadorId === usuario?.id && !item.devolutiva);
+      case 'MOBILIZADOR':
+      case 'PRESIDENTE':
+        return solicitacao.statusMacro === 'DEVOLVIDO_AJUSTE';
+      default:
+        return false;
+    }
+  }
+
+  /** Devolvido pela Assessoria para o Mobilizador/Presidente corrigir — pede destaque visual no card. */
+  precisaCorrecaoDoMobilizador(solicitacao: Solicitacao): boolean {
+    return this.ehMobilizador() && solicitacao.statusMacro === 'DEVOLVIDO_AJUSTE';
   }
 
   abrirPdf(solicitacao: Solicitacao): void {

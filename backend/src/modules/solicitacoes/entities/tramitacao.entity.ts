@@ -1,5 +1,6 @@
 import { Column, CreateDateColumn, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from 'typeorm';
 import { AcaoTramitacao } from '../../../common/enums/solicitacao.enum';
+import { Papel } from '../../../common/enums/papel.enum';
 import { Solicitacao } from './solicitacao.entity';
 import { ItemSolicitacao } from './item-solicitacao.entity';
 
@@ -43,6 +44,10 @@ export class Tramitacao {
 
   @Column({ name: 'usuario_nome', nullable: true })
   usuarioNome: string;
+
+  /** Perfil de quem agiu, para exibir junto do nome no histórico (ex.: "Coordenador Regional"). */
+  @Column({ name: 'usuario_papel', type: 'enum', enum: Papel, nullable: true })
+  usuarioPapel: Papel | null;
 
   @CreateDateColumn({ name: 'criado_em', type: 'timestamptz' })
   criadoEm: Date;

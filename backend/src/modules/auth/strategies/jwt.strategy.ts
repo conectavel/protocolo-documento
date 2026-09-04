@@ -42,6 +42,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
       email: usuario.email,
       papel: usuario.papel,
       areaProgramaId: usuario.areaProgramaId ?? undefined,
+      areasProgramaIds: usuario.areasProgramaIds,
     };
 
     await this.resolverContextoRm(usuarioAutenticado, usuario.papel, payload.rmCodigoReferencia);
@@ -58,6 +59,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
           nome: substituido.nome,
           papel: substituido.papel,
           areaProgramaId: substituido.areaProgramaId ?? undefined,
+          areasProgramaIds: substituido.areasProgramaIds,
         };
         await this.resolverContextoRm(identidade, substituido.papel, substituido.rmCodigoReferencia);
         usuarioAutenticado.substituindo = [identidade];
@@ -70,7 +72,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
   /** Resolve parceiroId/coordenadorRegionalId a partir do vínculo RM — usado tanto para o
    * usuário logado quanto para uma identidade substituída. */
   private async resolverContextoRm(
-    alvo: { parceiroId?: string; coordenadorRegionalId?: string },
+    alvo: { parceiroId?: string; mobilizadorId?: string; coordenadorRegionalId?: string },
     papel: Papel,
     rmCodigoReferencia?: string,
   ): Promise<void> {
@@ -79,6 +81,11 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     if (papel === Papel.MOBILIZADOR) {
       const mobilizador = await this.parceirosService.buscarMobilizadorPorRmCodigo(rmCodigoReferencia);
       alvo.parceiroId = mobilizador?.parceiroId;
+      alvo.mobilizadorId = mobilizador?.id;
+    }
+    if (papel === Papel.PRESIDENTE) {
+      const parceiro = await this.parceirosService.buscarParceiroPorPresidenteRmCodigo(rmCodigoReferencia);
+      alvo.parceiroId = parceiro?.id;
     }
     if (papel === Papel.COORDENADOR_REGIONAL) {
       const coordenador = await this.parceirosService.buscarCoordenadorRegionalPorRmCodigo(rmCodigoReferencia);

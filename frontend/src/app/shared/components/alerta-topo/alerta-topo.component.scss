@@ -1,0 +1,122 @@
+.alerta-topo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border-bottom: 1px solid transparent;
+  animation: alerta-topo-entrar 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+
+  .mat-icon {
+    flex-shrink: 0;
+  }
+
+  &__texto {
+    flex: 1;
+    min-width: 0;
+  }
+
+  &__fechar {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: none;
+    border-radius: var(--radius-sm);
+    background: transparent;
+    cursor: pointer;
+    color: inherit;
+    opacity: 0.7;
+    transition: opacity 0.2s ease, background-color 0.2s ease;
+
+    .mat-icon {
+      font-size: 18px;
+      width: 18px;
+      height: 18px;
+    }
+
+    &:hover {
+      opacity: 1;
+      background: rgba(0, 0, 0, 0.06);
+    }
+  }
+
+  &--sucesso {
+    background: var(--color-accent-light);
+    color: #14532d;
+    border-bottom-color: var(--color-accent);
+
+    .mat-icon:first-child {
+      color: var(--color-accent);
+    }
+  }
+
+  &--erro {
+    background: rgba(220, 38, 38, 0.08);
+    color: #7f1d1d;
+    border-bottom-color: var(--color-warn);
+
+    .mat-icon:first-child {
+      color: var(--color-warn);
+    }
+  }
+
+  &--aviso {
+    background: #fef3c7;
+    color: #78350f;
+    border-bottom-color: var(--chart-warning);
+
+    .mat-icon:first-child {
+      color: var(--chart-warning);
+    }
+  }
+
+  &--info {
+    background: rgba(37, 99, 235, 0.08);
+    color: #1e3a8a;
+    border-bottom-color: var(--color-secondary-blue);
+
+    .mat-icon:first-child {
+      color: var(--color-secondary-blue);
+    }
+  }
+}
+
+:root[data-theme='dark'] .alerta-topo {
+  &--sucesso {
+    background: rgba(20, 83, 45, 0.35);
+    color: #bbf7d0;
+  }
+  &--erro {
+    background: rgba(127, 29, 29, 0.35);
+    color: #fecaca;
+  }
+  &--aviso {
+    background: rgba(120, 53, 15, 0.35);
+    color: #fde68a;
+  }
+  &--info {
+    background: rgba(30, 58, 138, 0.35);
+    color: #bfdbfe;
+  }
+}
+
+@keyframes alerta-topo-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .alerta-topo {
+    animation-duration: 0.001ms;
+  }
+}

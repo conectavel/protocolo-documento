@@ -22,7 +22,11 @@ export class AnexosService {
     const uploadDir = this.config.get<string>('UPLOAD_DIR', './storage/anexos');
     fs.mkdirSync(uploadDir, { recursive: true });
 
-    const nomeArmazenado = `${uuid()}-${arquivo.originalname}`;
+    // Sanitiza o nome original antes de usá-lo no caminho no disco — um nome com
+    // "/" (ex.: gerado a partir de um número de documento "0099/2026") vira um
+    // separador de diretório e quebra o write com ENOENT (diretório inexistente).
+    const nomeSanitizado = arquivo.originalname.replace(/[\\/]/g, '-');
+    const nomeArmazenado = `${uuid()}-${nomeSanitizado}`;
     const caminhoCompleto = path.join(uploadDir, nomeArmazenado);
     fs.writeFileSync(caminhoCompleto, arquivo.buffer);
 
@@ -48,5 +52,10 @@ export class AnexosService {
 
   async vincularSolicitacao(anexoId: string, solicitacaoId: string): Promise<void> {
     await this.anexoRepo.update({ id: anexoId }, { solicitacaoId });
+  }
+
+  /** Todos os anexos que compõem o processo (ofício inicial + devolutivas, quando houver). */
+  async listarPorSolicitacao(solicitacaoId: string): Promise<Anexo[]> {
+    return this.anexoRepo.find({ where: { solicitacaoId }, order: { enviadoEm: 'ASC' } });
   }
 }

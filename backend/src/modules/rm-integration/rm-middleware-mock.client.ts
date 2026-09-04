@@ -25,11 +25,21 @@ export class RmMiddlewareMockClient extends RmMiddlewareClient {
     { rmCodigo: 'PRES-001', nome: 'Eduardo Araújo', email: 'eduardo.araujo@faeg.com.br', ativo: true, atualizadoEm: this.agora },
   ];
 
+  // Um Parceiro tem 1 ou mais Mobilizadores (regra de negócio) — dois aqui só
+  // para exercitar isso em desenvolvimento; o login de exemplo do seed usa o MOB-001.
   private readonly mobilizadores: RmMobilizadorDto[] = [
     {
       rmCodigo: 'MOB-001',
       nome: 'Marcos Santos',
       email: 'marcos.santos@faeg.com.br',
+      parceiroRmCodigo: 'PARC-FAEG',
+      ativo: true,
+      atualizadoEm: this.agora,
+    },
+    {
+      rmCodigo: 'MOB-002',
+      nome: 'Juliana Ferreira',
+      email: 'juliana.ferreira@faeg.com.br',
       parceiroRmCodigo: 'PARC-FAEG',
       ativo: true,
       atualizadoEm: this.agora,
@@ -46,6 +56,9 @@ export class RmMiddlewareMockClient extends RmMiddlewareClient {
       presidenteRmCodigo: 'PRES-001',
       ativo: true,
       atualizadoEm: this.agora,
+      cnpj: '33.638.735/0001-02',
+      endereco: 'Rua Professor Jurandir, quadra 26, lote 1D, Centro, Hidrolândia/GO. CEP 75.340-000',
+      telefone: '(62) 99356-5501',
     },
   ];
 

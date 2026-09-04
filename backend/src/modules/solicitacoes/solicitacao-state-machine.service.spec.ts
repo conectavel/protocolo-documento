@@ -41,6 +41,16 @@ describe('SolicitacaoStateMachineService', () => {
   let itemRepo: FakeRepository<ItemSolicitacao>;
   let tramitacaoRepo: FakeRepository<Tramitacao>;
   let devolutivaRepo: FakeRepository<Devolutiva>;
+  const notificacoesFake = {
+    notificarAssessoria: jest.fn().mockResolvedValue(undefined),
+    notificarSuperintendente: jest.fn().mockResolvedValue(undefined),
+    notificarDiretores: jest.fn().mockResolvedValue(undefined),
+    notificarCoordenadorRegional: jest.fn().mockResolvedValue(undefined),
+    notificarGestorDaArea: jest.fn().mockResolvedValue(undefined),
+    notificarCoordenadorDesignado: jest.fn().mockResolvedValue(undefined),
+    notificarCoordenadorEncaminhado: jest.fn().mockResolvedValue(undefined),
+    notificarMobilizadorEPresidente: jest.fn().mockResolvedValue(undefined),
+  };
 
   beforeEach(() => {
     solicitacaoRepo = new FakeRepository<Solicitacao>();
@@ -53,6 +63,7 @@ describe('SolicitacaoStateMachineService', () => {
       itemRepo as any,
       tramitacaoRepo as any,
       devolutivaRepo as any,
+      notificacoesFake as any,
     );
   });
 

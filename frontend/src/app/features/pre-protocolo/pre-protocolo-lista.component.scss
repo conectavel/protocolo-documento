@@ -1,4 +1,82 @@
+.po-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+
+  &__item {
+    border: 1px solid var(--color-border);
+    background: var(--color-surface);
+    color: var(--color-text-secondary);
+    padding: 8px 18px;
+    border-radius: var(--radius-pill);
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+
+    &:hover {
+      border-color: var(--color-primary);
+    }
+
+    &--active {
+      background: var(--color-primary);
+      border-color: var(--color-primary);
+      color: #ffffff;
+    }
+  }
+}
+
+.po-filtros {
+  border-radius: var(--radius-sm) !important;
+  margin-bottom: var(--section-gap);
+  box-shadow: var(--shadow-card) !important;
+
+  mat-panel-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+
+    mat-icon {
+      color: var(--color-text-secondary);
+    }
+  }
+
+  &__rodape {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 16px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  &__acoes {
+    display: flex;
+    gap: 12px;
+  }
+}
+
+.po-paginator {
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+  background: var(--color-surface);
+  margin-top: var(--section-gap);
+}
+
 .pre-protocolo-card {
+  margin-bottom: var(--grid-gap);
+
+  .po-card-section-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
   &__topo {
     display: flex;
     align-items: flex-start;

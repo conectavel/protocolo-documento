@@ -17,12 +17,17 @@ import * as fs from 'fs';
 import { JwtAuthGuard, UsuarioAutenticado } from '../../common/guards/jwt-auth.guard';
 import { UsuarioAtual } from '../../common/decorators/usuario-atual.decorator';
 import { AnexosService } from './anexos.service';
+import { GeradorOficioService } from './gerador-oficio.service';
+import { GerarOficioModeloDto } from './dto/gerar-oficio-modelo.dto';
 import { TipoAnexo } from './entities/anexo.entity';
 
 @Controller('anexos')
 @UseGuards(JwtAuthGuard)
 export class AnexosController {
-  constructor(private readonly anexosService: AnexosService) {}
+  constructor(
+    private readonly anexosService: AnexosService,
+    private readonly geradorOficioService: GeradorOficioService,
+  ) {}
 
   @Post()
   @UseInterceptors(FileInterceptor('arquivo'))
@@ -35,6 +40,33 @@ export class AnexosController {
       throw new BadRequestException('Nenhum arquivo enviado.');
     }
     const anexo = await this.anexosService.salvar(arquivo, tipo, usuario.id);
+    return {
+      id: anexo.id,
+      nomeArquivo: anexo.nomeArquivo,
+      tamanhoBytes: anexo.tamanhoBytes,
+      mimeType: anexo.mimeType,
+      url: `/api/anexos/${anexo.id}/download`,
+    };
+  }
+
+  /**
+   * Gera um PDF de ofício padrão a partir do que o usuário já preencheu na
+   * tela (Dados do Documento + Itens) e o salva como um anexo comum — para
+   * quando o Parceiro/Sindicato não tem um documento próprio pronto. Ver
+   * GeradorOficioService.
+   */
+  @Post('gerar-modelo')
+  async gerarModelo(@Body() dto: GerarOficioModeloDto, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    const bufferPdf = await this.geradorOficioService.gerarPdf(dto);
+    const numero = dto.numeroDocumento?.replace(/[\\/]/g, '-') || 'gerado';
+    const nomeArquivo = `oficio-${numero}.pdf`;
+
+    const anexo = await this.anexosService.salvar(
+      { originalname: nomeArquivo, buffer: bufferPdf, mimetype: 'application/pdf', size: bufferPdf.length },
+      'OFICIO',
+      usuario.id,
+    );
+
     return {
       id: anexo.id,
       nomeArquivo: anexo.nomeArquivo,

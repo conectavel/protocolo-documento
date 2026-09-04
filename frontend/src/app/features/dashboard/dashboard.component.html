@@ -195,6 +195,60 @@
       }
     </div>
 
+    <!-- Coordenadores Regionais — SLA de ciência (ausente para o próprio Coordenador Regional,
+         que só vê os próprios dados e não deve comparar com colegas). -->
+    @if (m.slaCiencia.porCoordenadorRegional.length > 0) {
+      <div class="po-card po-dash-grid__largo">
+        <div class="po-card-section-title">
+          <span>Coordenadores Regionais — SLA de Ciência</span>
+        </div>
+        <p class="po-hint">
+          Como cada Coordenador Regional está atuando no prazo de 24h para dar ciência.
+        </p>
+        <div class="po-divider-gradient"></div>
+
+        <div class="po-table-container">
+          <table class="po-table">
+            <thead>
+              <tr>
+                <th>Coordenador Regional</th>
+                <th>Total</th>
+                <th>Dentro do prazo</th>
+                <th>SLA estourado (automático)</th>
+                <th>% dentro do prazo</th>
+                <th>Tempo médio de ciência</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (cr of m.slaCiencia.porCoordenadorRegional; track cr.coordenadorRegionalId) {
+                <tr>
+                  <td>{{ cr.nome }}</td>
+                  <td>{{ cr.total }}</td>
+                  <td>{{ cr.dentroPrazo }}</td>
+                  <td>{{ cr.automaticas }}</td>
+                  <td>
+                    @if (cr.percentualDentroPrazo !== null) {
+                      <span
+                        class="po-chip"
+                        [class.po-chip--success]="cr.percentualDentroPrazo >= 80"
+                        [class.po-chip--warning]="cr.percentualDentroPrazo >= 50 && cr.percentualDentroPrazo < 80"
+                        [class.po-chip--neutral]="cr.percentualDentroPrazo < 50"
+                      >
+                        {{ cr.percentualDentroPrazo }}%
+                      </span>
+                    } @else {
+                      —
+                    }
+                  </td>
+                  <td>{{ cr.tempoMedioHoras !== null ? cr.tempoMedioHoras + 'h' : '—' }}</td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    }
+
     <!-- Top Parceiros -->
     <div class="po-card">
       <div class="po-card-section-title">Top Parceiros por volume</div>

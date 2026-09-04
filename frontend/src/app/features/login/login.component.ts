@@ -22,10 +22,12 @@ interface UsuarioDebug {
 /** Um usuário representativo por papel, para login rápido em ambiente de desenvolvimento. */
 const USUARIOS_DEBUG: UsuarioDebug[] = [
   { papel: 'Mobilizador', email: 'marcos.santos@senar-go.com.br' },
+  { papel: 'Presidente do Sindicato', email: 'eduardo.araujo@senar-go.com.br' },
   { papel: 'Coordenador Regional', email: 'coordenador.regional@senar-go.com.br' },
   { papel: 'Assessor(a) do Superintendente', email: 'assessor@senar-go.com.br' },
   { papel: 'Superintendente', email: 'superintendente@senar-go.com.br' },
   { papel: 'Diretor(a) Educacional', email: 'diretor.educacional@senar-go.com.br' },
+  { papel: 'Diretor(a) Educacional (2)', email: 'patricia.nogueira@senar-go.com.br' },
   { papel: 'Gestor(a) (FPR)', email: 'carol@senar-go.com.br' },
   { papel: 'Coordenador(a) (FPR)', email: 'claudimeire@senar-go.com.br' },
   { papel: 'Administrador(a)', email: 'admin@senar-go.com.br' },

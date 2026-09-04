@@ -37,6 +37,21 @@ export interface MetricaSerieTemporal {
   total: number;
 }
 
+/**
+ * Desempenho de cada Coordenador Regional em dar ciência dentro do prazo de 24h —
+ * ausente (array vazio) quando quem pede é o próprio Coordenador Regional, que só
+ * vê os próprios dados e não deve comparar com colegas.
+ */
+export interface MetricaPorCoordenadorRegional {
+  coordenadorRegionalId: string;
+  nome: string;
+  total: number;
+  dentroPrazo: number;
+  automaticas: number;
+  percentualDentroPrazo: number | null;
+  tempoMedioHoras: number | null;
+}
+
 export interface Metricas {
   periodo: { dataInicio: string; dataFim: string };
   totalSolicitacoes: number;
@@ -52,6 +67,7 @@ export interface Metricas {
     automaticas: number;
     percentualAutomatica: number | null;
     tempoMedioHoras: number | null;
+    porCoordenadorRegional: MetricaPorCoordenadorRegional[];
   };
   porTipoItem: MetricaPorTipoItem[];
   porArea: MetricaPorArea[];

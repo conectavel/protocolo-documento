@@ -11,19 +11,24 @@ export interface TipoNotificacao {
  * de Configurações (ver requirements.md HU02–HU09: cada papel só é acionado nas etapas em
  * que efetivamente atua no fluxo).
  */
+// Mobilizador e Presidente do Sindicato têm a mesma autonomia (pedido do cliente) —
+// por isso compartilham exatamente o mesmo catálogo de notificações.
+const NOTIFICACOES_PAPEL_PARCEIRO: TipoNotificacao[] = [
+  {
+    codigo: 'DEVOLUTIVA_FINAL',
+    titulo: 'Devolutiva final da solicitação',
+    descricao: 'Quando sua solicitação recebe a resposta final (atendida, parcial ou não atendida).',
+  },
+  {
+    codigo: 'SOLICITACAO_DEVOLVIDA_AJUSTE',
+    titulo: 'Solicitação devolvida para ajuste',
+    descricao: 'Quando a Assessoria devolve sua solicitação para complementação de informações.',
+  },
+];
+
 export const CATALOGO_NOTIFICACOES: Record<Papel, TipoNotificacao[]> = {
-  [Papel.MOBILIZADOR]: [
-    {
-      codigo: 'DEVOLUTIVA_FINAL',
-      titulo: 'Devolutiva final da solicitação',
-      descricao: 'Quando sua solicitação recebe a resposta final (atendida, parcial ou não atendida).',
-    },
-    {
-      codigo: 'SOLICITACAO_DEVOLVIDA_AJUSTE',
-      titulo: 'Solicitação devolvida para ajuste',
-      descricao: 'Quando a Assessoria devolve sua solicitação para complementação de informações.',
-    },
-  ],
+  [Papel.MOBILIZADOR]: NOTIFICACOES_PAPEL_PARCEIRO,
+  [Papel.PRESIDENTE]: NOTIFICACOES_PAPEL_PARCEIRO,
   [Papel.COORDENADOR_REGIONAL]: [
     {
       codigo: 'NOVA_SOLICITACAO_CIENCIA',

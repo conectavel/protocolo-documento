@@ -10,6 +10,7 @@ import {
   DesignarCoordenadorDto,
   DespachoSuperintendenteDto,
   DirecionamentoDiretorDto,
+  EditarItemDto,
   EncaminharItemDto,
   RegistrarDevolutivaDto,
 } from './dto/transicoes.dto';
@@ -44,6 +45,11 @@ export class SolicitacoesController {
     return this.solicitacoesService.historico(id, usuario);
   }
 
+  @Get(':id/anexos')
+  listarAnexos(@Param('id') id: string, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.solicitacoesService.listarAnexos(id, usuario);
+  }
+
   @Post(':id/ciencia')
   darCiencia(@Param('id') id: string, @UsuarioAtual() usuario: UsuarioAutenticado) {
     return this.solicitacoesService.darCiencia(id, usuario);
@@ -72,13 +78,13 @@ export class SolicitacoesController {
     return this.solicitacoesService.despacharSuperintendente(id, usuario, dto);
   }
 
-  @Post(':id/direcionamento-diretor')
-  direcionarDiretor(
-    @Param('id') id: string,
+  @Post('itens/:itemId/direcionamento-diretor')
+  direcionarItem(
+    @Param('itemId') itemId: string,
     @Body() dto: DirecionamentoDiretorDto,
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
-    return this.solicitacoesService.direcionarDiretor(id, usuario, dto);
+    return this.solicitacoesService.direcionarItem(itemId, usuario, dto);
   }
 
   @Post('itens/:itemId/designar-coordenador')
@@ -102,6 +108,15 @@ export class SolicitacoesController {
     @UsuarioAtual() usuario: UsuarioAutenticado,
   ) {
     return this.solicitacoesService.encaminharItem(itemId, usuario, dto);
+  }
+
+  @Post('itens/:itemId/editar')
+  editarItem(
+    @Param('itemId') itemId: string,
+    @Body() dto: EditarItemDto,
+    @UsuarioAtual() usuario: UsuarioAutenticado,
+  ) {
+    return this.solicitacoesService.editarItem(itemId, usuario, dto);
   }
 
   @Post('itens/:itemId/devolutiva')

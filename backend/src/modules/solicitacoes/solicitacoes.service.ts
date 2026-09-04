@@ -1,11 +1,12 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Brackets, Repository } from 'typeorm';
+import { Between, Brackets, Repository } from 'typeorm';
 import { Solicitacao } from './entities/solicitacao.entity';
 import { ItemSolicitacao } from './entities/item-solicitacao.entity';
 import { Tramitacao } from './entities/tramitacao.entity';
 import { AreaPrograma } from '../parceiros/entities/area-programa.entity';
 import { Parceiro } from '../parceiros/entities/parceiro.entity';
+import { Mobilizador } from '../parceiros/entities/mobilizador.entity';
 import { AnexosService } from '../anexos/anexos.service';
 import { SolicitacaoStateMachineService } from './solicitacao-state-machine.service';
 import { CriarSolicitacaoDto } from './dto/criar-solicitacao.dto';
@@ -16,10 +17,12 @@ import {
   DesignarCoordenadorDto,
   DespachoSuperintendenteDto,
   DirecionamentoDiretorDto,
+  EditarItemDto,
   EncaminharItemDto,
+  ItemExcluidoDto,
   RegistrarDevolutivaDto,
 } from './dto/transicoes.dto';
-import { Papel, PAPEIS_INTERNOS } from '../../common/enums/papel.enum';
+import { Papel, PAPEIS_INTERNOS, PAPEIS_PARCEIRO } from '../../common/enums/papel.enum';
 import { StatusMacro, TipoItem } from '../../common/enums/solicitacao.enum';
 import { UsuarioAutenticado } from '../../common/guards/jwt-auth.guard';
 
@@ -39,19 +42,33 @@ export class SolicitacoesService {
     @InjectRepository(Tramitacao) private readonly tramitacaoRepo: Repository<Tramitacao>,
     @InjectRepository(AreaPrograma) private readonly areaProgramaRepo: Repository<AreaPrograma>,
     @InjectRepository(Parceiro) private readonly parceiroRepo: Repository<Parceiro>,
+    @InjectRepository(Mobilizador) private readonly mobilizadorRepo: Repository<Mobilizador>,
     private readonly anexosService: AnexosService,
     private readonly stateMachine: SolicitacaoStateMachineService,
   ) {}
 
   // ---------------------------------------------------------------- HU01
-  async criar(dto: CriarSolicitacaoDto, usuario: UsuarioAutenticado): Promise<Solicitacao> {
-    if (usuario.papel === Papel.MOBILIZADOR && usuario.parceiroId !== dto.parceiroId) {
-      throw new ForbiddenException('Mobilizador só pode protocolar em nome do próprio Parceiro.');
+  async criar(
+    dto: CriarSolicitacaoDto,
+    usuario: UsuarioAutenticado,
+    origemPreProtocolo?: { preProtocoloId: string; emailRemetente: string },
+  ): Promise<Solicitacao> {
+    if (PAPEIS_PARCEIRO.includes(usuario.papel) && usuario.parceiroId !== dto.parceiroId) {
+      throw new ForbiddenException('Você só pode protocolar em nome do próprio Parceiro.');
+    }
+    // Mobilizador só pode protocolar como ele mesmo — 1 Parceiro tem 1 ou mais
+    // Mobilizadores, então não basta pertencer ao mesmo Parceiro, tem que ser
+    // o próprio usuário logado (Presidente, que não é ele mesmo um Mobilizador,
+    // pode escolher qualquer um dos Mobilizadores do seu Parceiro).
+    if (usuario.papel === Papel.MOBILIZADOR && usuario.mobilizadorId !== dto.mobilizadorId) {
+      throw new ForbiddenException('Você só pode protocolar em seu próprio nome.');
     }
 
     const parceiro = await this.parceiroRepo.findOne({ where: { id: dto.parceiroId } });
     if (!parceiro) throw new NotFoundException('Parceiro não encontrado.');
-    if (parceiro.mobilizadorId !== dto.mobilizadorId) {
+
+    const mobilizador = await this.mobilizadorRepo.findOne({ where: { id: dto.mobilizadorId } });
+    if (!mobilizador || mobilizador.parceiroId !== dto.parceiroId) {
       throw new ForbiddenException('O Mobilizador informado não pertence a este Parceiro.');
     }
 
@@ -62,14 +79,31 @@ export class SolicitacoesService {
       municipio: dto.municipio,
       assunto: dto.assunto,
       numeroDocumento: dto.numeroDocumento ?? (await this.gerarProximoNumeroDocumento()),
+      numeroProcesso: await this.gerarNumeroProcesso(agora),
       dataDocumento: dto.dataDocumento,
-      observacao: dto.observacao,
+      observacao: dto.resumoObservacoes,
       anexoOficioId: dto.anexoOficioId,
       dataSolicitacao: agora,
       prazoCienciaRegional: new Date(agora.getTime() + 24 * 60 * 60 * 1000),
       criadoPor: usuario.nome,
       alteradoPor: usuario.nome,
-      itens: dto.itens.map((item) => this.itemRepo.create({ ...item })),
+      preProtocoloOrigemId: origemPreProtocolo?.preProtocoloId ?? null,
+      emailRemetenteOrigem: origemPreProtocolo?.emailRemetente ?? null,
+      itens: dto.itens.map((item) =>
+        this.itemRepo.create({
+          ...item,
+          // Retrato imutável do que o Mobilizador/Presidente preencheu — ver
+          // ItemSolicitacao.valoresOriginais para o motivo de existir.
+          valoresOriginais: {
+            tipoEvento: item.tipoEvento,
+            acaoAtividade: item.acaoAtividade,
+            disciplina: item.disciplina,
+            turno: item.turno,
+            dataInicio: item.dataInicio,
+            dataFim: item.dataFim,
+          },
+        })
+      ),
     });
 
     const salva = await this.solicitacaoRepo.save(solicitacao);
@@ -137,8 +171,8 @@ export class SolicitacoesService {
   }
 
   async historico(id: string, usuario: UsuarioAutenticado) {
-    if (usuario.papel === Papel.MOBILIZADOR) {
-      throw new ForbiddenException('Mobilizador não tem acesso ao histórico interno (HU01).');
+    if (PAPEIS_PARCEIRO.includes(usuario.papel)) {
+      throw new ForbiddenException('Você não tem acesso ao histórico interno (HU01).');
     }
     const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
     this.assertAcesso(solicitacao, usuario);
@@ -153,18 +187,45 @@ export class SolicitacoesService {
       acao: t.acao,
       motivo: t.motivo,
       responsavelNome: t.usuarioNome,
+      responsavelPapel: t.usuarioPapel,
       criadoEm: t.criadoEm,
     }));
   }
 
   /**
+   * Aba "Anexos" do detalhe — todos os documentos que compõem o processo.
+   * Regra HU01: a visualização do Mobilizador/Presidente fica restrita ao
+   * status e à devolutiva final; esta aba (assim como "Aprovações"/histórico)
+   * não faz parte do que "volta" para eles — o próprio ofício que enviaram já
+   * aparece embutido na aba "Processo".
+   */
+  async listarAnexos(id: string, usuario: UsuarioAutenticado) {
+    if (PAPEIS_PARCEIRO.includes(usuario.papel)) {
+      throw new ForbiddenException('Você não tem acesso à lista de anexos internos (HU01).');
+    }
+    const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
+    this.assertAcesso(solicitacao, usuario);
+    const anexos = await this.anexosService.listarPorSolicitacao(id);
+    return anexos.map((a) => ({
+      id: a.id,
+      nomeArquivo: a.nomeArquivo,
+      tipo: a.tipo,
+      tamanhoBytes: a.tamanhoBytes,
+      mimeType: a.mimeType,
+      enviadoPor: a.enviadoPor,
+      enviadoEm: a.enviadoEm,
+    }));
+  }
+
+  /**
    * KPIs/dashboard — agregações reais sobre `solicitacoes`/`itens_solicitacao`, respeitando o
-   * mesmo escopo de visibilidade por papel usado em `listar()`. Não acessível ao Mobilizador
-   * (HU01 — métricas de tramitação interna não fazem parte da visão dele).
+   * mesmo escopo de visibilidade por papel usado em `listar()`. Não acessível aos papéis de
+   * Parceiro (Mobilizador/Presidente) — HU01, métricas de tramitação interna não fazem
+   * parte da visão deles.
    */
   async metricas(usuario: UsuarioAutenticado, filtros: MetricasSolicitacoesDto) {
-    if (usuario.papel === Papel.MOBILIZADOR) {
-      throw new ForbiddenException('Mobilizador não tem acesso ao painel de métricas (HU01).');
+    if (PAPEIS_PARCEIRO.includes(usuario.papel)) {
+      throw new ForbiddenException('Você não tem acesso ao painel de métricas (HU01).');
     }
 
     const dataFim = filtros.dataFim ? new Date(filtros.dataFim) : new Date();
@@ -230,6 +291,62 @@ export class SolicitacoesService {
 
     const totalComCiencia = Number(slaBruto?.totalComCiencia ?? 0);
     const automaticas = Number(slaBruto?.automaticas ?? 0);
+
+    // --- SLA de ciência por Coordenador Regional (identificar como cada um está atuando) —
+    // só faz sentido comparar coordenadores para quem enxerga mais de um; o próprio
+    // Coordenador Regional já só vê os próprios dados (aplicarEscopoPorPapel), então para
+    // ele omitimos esta comparação por completo (ver retorno abaixo).
+    let porCoordenadorRegional: {
+      coordenadorRegionalId: string;
+      nome: string;
+      total: number;
+      dentroPrazo: number;
+      automaticas: number;
+      percentualDentroPrazo: number | null;
+      tempoMedioHoras: number | null;
+    }[] = [];
+
+    if (usuario.papel !== Papel.COORDENADOR_REGIONAL) {
+      const porCrBruto = await noPeriodo(baseQb(), dataInicio, dataFim)
+        .leftJoin('parceiro.coordenadorRegional', 'coordenadorRegional')
+        .select('coordenadorRegional.id', 'coordenadorRegionalId')
+        .addSelect('coordenadorRegional.nome', 'nome')
+        .addSelect('COUNT(DISTINCT s.id)', 'total')
+        .addSelect(
+          'COUNT(DISTINCT s.id) FILTER (WHERE s.cienciaAutomatica = true)',
+          'automaticas',
+        )
+        .addSelect(
+          'AVG(EXTRACT(EPOCH FROM (s.dataCienciaRegional - s.dataSolicitacao)) / 3600)',
+          'tempoMedioHoras',
+        )
+        .andWhere('s.dataCienciaRegional IS NOT NULL')
+        .andWhere('coordenadorRegional.id IS NOT NULL')
+        .groupBy('coordenadorRegional.id')
+        .addGroupBy('coordenadorRegional.nome')
+        .orderBy('total', 'DESC')
+        .getRawMany<{
+          coordenadorRegionalId: string;
+          nome: string;
+          total: string;
+          automaticas: string;
+          tempoMedioHoras: string | null;
+        }>();
+
+      porCoordenadorRegional = porCrBruto.map((cr) => {
+        const total = Number(cr.total);
+        const automaticasCr = Number(cr.automaticas);
+        return {
+          coordenadorRegionalId: cr.coordenadorRegionalId,
+          nome: cr.nome,
+          total,
+          dentroPrazo: total - automaticasCr,
+          automaticas: automaticasCr,
+          percentualDentroPrazo: total > 0 ? Math.round(((total - automaticasCr) / total) * 1000) / 10 : null,
+          tempoMedioHoras: cr.tempoMedioHoras ? Math.round(Number(cr.tempoMedioHoras) * 10) / 10 : null,
+        };
+      });
+    }
 
     // --- distribuição por tipo de item ----------------------------------------------------
     const porTipoItemBruto = await noPeriodo(baseQb(), dataInicio, dataFim)
@@ -315,6 +432,13 @@ export class SolicitacoesService {
         percentualAutomatica:
           totalComCiencia > 0 ? Math.round((automaticas / totalComCiencia) * 1000) / 10 : null,
         tempoMedioHoras: slaBruto?.tempoMedioHoras ? Math.round(Number(slaBruto.tempoMedioHoras) * 10) / 10 : null,
+        /**
+         * Comparativo entre Coordenadores Regionais — quem deu ciência dentro do prazo
+         * vs. quem estourou o SLA de 24h e teve avanço automático. Omitido (array vazio)
+         * quando o próprio Coordenador Regional está vendo o dashboard: ele já enxerga
+         * só os próprios dados (aplicarEscopoPorPapel) e não deve comparar com colegas.
+         */
+        porCoordenadorRegional,
       },
       porTipoItem,
       porArea: porArea.map((a) => ({
@@ -348,11 +472,14 @@ export class SolicitacoesService {
     this.exigirPapel(usuario, [Papel.ASSESSOR, Papel.ADMIN]);
     const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
     await this.stateMachine.analisarAssessoria(solicitacao, usuario, dto.decisao, dto.motivo);
+    if (dto.decisao === 'APROVAR') {
+      await this.excluirItensDoFluxo(solicitacao, usuario, dto.itensExcluidos);
+    }
     return this.buscarPorId(id, usuario);
   }
 
   async reenviarAposAjuste(id: string, usuario: UsuarioAutenticado) {
-    this.exigirPapel(usuario, [Papel.MOBILIZADOR, Papel.ADMIN]);
+    this.exigirPapel(usuario, [...PAPEIS_PARCEIRO, Papel.ADMIN]);
     const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
     this.assertAcesso(solicitacao, usuario);
     await this.stateMachine.reenviarAposAjuste(solicitacao, usuario);
@@ -362,24 +489,53 @@ export class SolicitacoesService {
   async despacharSuperintendente(id: string, usuario: UsuarioAutenticado, dto: DespachoSuperintendenteDto) {
     this.exigirPapel(usuario, [Papel.SUPERINTENDENTE, Papel.ADMIN]);
     const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
-    await this.stateMachine.despacharSuperintendente(solicitacao, usuario, dto.diretoriaDestino);
+    await this.stateMachine.despacharSuperintendente(
+      solicitacao,
+      usuario,
+      dto.diretoriaDestino,
+      dto.diretoresIds,
+    );
+    await this.excluirItensDoFluxo(solicitacao, usuario, dto.itensExcluidos);
     return this.buscarPorId(id, usuario);
   }
 
-  async direcionarDiretor(id: string, usuario: UsuarioAutenticado, dto: DirecionamentoDiretorDto) {
+  /**
+   * A Assessoria (ao aprovar) e o Superintendente (ao despachar) podem marcar
+   * itens que não vão avançar pelo fluxo das áreas — cada um vira
+   * "Parcialmente Atendido" automaticamente, com uma devolutiva que usa a
+   * observação escrita por quem excluiu (ou uma mensagem padrão, se em branco).
+   */
+  private async excluirItensDoFluxo(
+    solicitacao: Solicitacao,
+    usuario: UsuarioAutenticado,
+    itensExcluidos: ItemExcluidoDto[] | undefined,
+  ): Promise<void> {
+    for (const { itemId, observacao, resultado } of itensExcluidos ?? []) {
+      const item = await this.buscarItemOuFalhar(itemId);
+      await this.stateMachine.excluirItemDoFluxo(item, solicitacao, usuario, observacao, resultado);
+    }
+  }
+
+  /** HU05 — direciona UM item específico; só um dos Diretores designados no despacho pode agir. */
+  async direcionarItem(itemId: string, usuario: UsuarioAutenticado, dto: DirecionamentoDiretorDto) {
     this.exigirPapel(usuario, [Papel.DIRETOR_EDUCACIONAL, Papel.ADMIN]);
-    const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
+    const item = await this.buscarItemOuFalhar(itemId);
+    const solicitacao = await this.buscarSolicitacaoOuFalhar(item.solicitacaoId);
+    this.exigirDiretorDesignado(usuario, solicitacao);
+
     const area = await this.areaProgramaRepo.findOne({ where: { id: dto.areaProgramaId } });
     if (!area) throw new NotFoundException('Área/Programa não encontrada.');
 
-    await this.stateMachine.direcionarParaArea(
+    await this.stateMachine.direcionarItemParaArea(
+      item,
       solicitacao,
       usuario,
       dto.areaProgramaId,
       dto.coordenadorId,
       area.nome,
+      dto.observacao,
     );
-    return this.buscarPorId(id, usuario);
+    return this.buscarPorId(solicitacao.id, usuario);
   }
 
   async designarCoordenador(itemId: string, usuario: UsuarioAutenticado, dto: DesignarCoordenadorDto) {
@@ -417,6 +573,15 @@ export class SolicitacoesService {
     return this.buscarPorId(solicitacao.id, usuario);
   }
 
+  /** O Coordenador corrige os campos preenchidos pelo Mobilizador/Presidente — o original fica em histórico. */
+  async editarItem(itemId: string, usuario: UsuarioAutenticado, dto: EditarItemDto) {
+    this.exigirPapel(usuario, [Papel.COORDENADOR, Papel.ADMIN]);
+    const item = await this.buscarItemOuFalhar(itemId);
+    const solicitacao = await this.buscarSolicitacaoOuFalhar(item.solicitacaoId);
+    await this.stateMachine.editarItem(item, solicitacao, usuario, dto);
+    return this.buscarPorId(solicitacao.id, usuario);
+  }
+
   async registrarDevolutiva(itemId: string, usuario: UsuarioAutenticado, dto: RegistrarDevolutivaDto) {
     this.exigirPapel(usuario, [Papel.COORDENADOR, Papel.ADMIN]);
     const item = await this.buscarItemOuFalhar(itemId);
@@ -430,6 +595,25 @@ export class SolicitacoesService {
     const ano = new Date().getFullYear();
     const total = await this.solicitacaoRepo.count();
     return `${String(total + 1).padStart(4, '0')}/${ano}`;
+  }
+
+  /**
+   * Número de Processo — identificador único e destacado de todo protocolo,
+   * no formato AAAAMMDD + sequência do dia (ex.: 20260902001 = 2º/set/2026,
+   * 1º protocolo daquele dia). Diferente de `numeroDocumento` (o número do
+   * ofício em si, que o próprio Mobilizador pode informar).
+   */
+  private async gerarNumeroProcesso(agora: Date): Promise<string> {
+    const inicioDia = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate());
+    const inicioDiaSeguinte = new Date(agora.getFullYear(), agora.getMonth(), agora.getDate() + 1);
+    const totalHoje = await this.solicitacaoRepo.count({
+      where: { criadoEm: Between(inicioDia, inicioDiaSeguinte) },
+    });
+    const ano = agora.getFullYear();
+    const mes = String(agora.getMonth() + 1).padStart(2, '0');
+    const dia = String(agora.getDate()).padStart(2, '0');
+    const sequencia = String(totalHoje + 1).padStart(3, '0');
+    return `${ano}${mes}${dia}${sequencia}`;
   }
 
   private async buscarSolicitacaoOuFalhar(id: string): Promise<Solicitacao> {
@@ -451,9 +635,27 @@ export class SolicitacoesService {
    */
   private identidadesEfetivas(usuario: UsuarioAutenticado) {
     return [
-      { papel: usuario.papel, areaProgramaId: usuario.areaProgramaId, parceiroId: usuario.parceiroId, coordenadorRegionalId: usuario.coordenadorRegionalId },
+      {
+        papel: usuario.papel,
+        areaProgramaId: usuario.areaProgramaId,
+        areasProgramaIds: usuario.areasProgramaIds,
+        parceiroId: usuario.parceiroId,
+        coordenadorRegionalId: usuario.coordenadorRegionalId,
+      },
       ...(usuario.substituindo ?? []),
     ];
+  }
+
+  /**
+   * Todas as Áreas/Programa que uma identidade pode atender — um Coordenador
+   * pode ter mais de uma hoje (Usuario.areasProgramaIds); onde estiver vazio
+   * (usuários ainda não migrados), cai de volta na área única de sempre.
+   */
+  private areasEfetivas(identidade: { areaProgramaId?: string; areasProgramaIds?: string[] }): string[] {
+    if (identidade.areasProgramaIds?.length) {
+      return identidade.areasProgramaIds;
+    }
+    return identidade.areaProgramaId ? [identidade.areaProgramaId] : [];
   }
 
   private exigirPapel(usuario: UsuarioAutenticado, permitidos: Papel[]): void {
@@ -465,9 +667,26 @@ export class SolicitacoesService {
 
   private exigirMesmaArea(usuario: UsuarioAutenticado, areaProgramaId?: string): void {
     if (usuario.papel === Papel.ADMIN) return;
-    const temAcesso = this.identidadesEfetivas(usuario).some((id) => id.areaProgramaId === areaProgramaId);
+    const temAcesso = this.identidadesEfetivas(usuario).some((id) =>
+      this.areasEfetivas(id).includes(areaProgramaId ?? '')
+    );
     if (!temAcesso) {
       throw new ForbiddenException('Este item pertence a outra Área/Programa.');
+    }
+  }
+
+  /**
+   * HU04/HU05 — só os Diretores explicitamente escolhidos pelo Superintendente
+   * no despacho podem direcionar os itens desta solicitação (`identidadesEfetivas`
+   * não serve aqui porque a designação é por solicitação, não por papel/área).
+   */
+  private exigirDiretorDesignado(usuario: UsuarioAutenticado, solicitacao: Solicitacao): void {
+    if (usuario.papel === Papel.ADMIN) return;
+    const designados = solicitacao.diretoresDesignadosIds ?? [];
+    const idsEfetivos = [usuario.id, ...(usuario.substituindo ?? []).map((sub) => sub.usuarioId)];
+    const temAcesso = idsEfetivos.some((id) => designados.includes(id));
+    if (!temAcesso) {
+      throw new ForbiddenException('Você não foi designado como Diretor responsável por esta solicitação.');
     }
   }
 
@@ -482,16 +701,19 @@ export class SolicitacoesService {
     qb.andWhere(
       new Brackets((sub) => {
         identidades.forEach((id, indice) => {
-          if (id.papel === Papel.MOBILIZADOR) {
+          if (PAPEIS_PARCEIRO.includes(id.papel)) {
             sub.orWhere(`s.parceiroId = :parceiroId${indice}`, { [`parceiroId${indice}`]: id.parceiroId });
           } else if (id.papel === Papel.COORDENADOR_REGIONAL) {
             sub.orWhere(`parceiro.coordenadorRegionalId = :coordenadorRegionalId${indice}`, {
               [`coordenadorRegionalId${indice}`]: id.coordenadorRegionalId,
             });
           } else if (id.papel === Papel.GESTOR || id.papel === Papel.COORDENADOR) {
-            sub.orWhere(`itens.areaProgramaId = :areaProgramaId${indice}`, {
-              [`areaProgramaId${indice}`]: id.areaProgramaId,
-            });
+            const areas = this.areasEfetivas(id);
+            if (areas.length > 0) {
+              sub.orWhere(`itens.areaProgramaId IN (:...areaProgramaIds${indice})`, {
+                [`areaProgramaIds${indice}`]: areas,
+              });
+            }
           }
         });
       }),
@@ -501,7 +723,7 @@ export class SolicitacoesService {
 
   private assertAcesso(solicitacao: Solicitacao, usuario: UsuarioAutenticado): void {
     const permitido = this.identidadesEfetivas(usuario).some(
-      (id) => id.papel !== Papel.MOBILIZADOR || solicitacao.parceiroId === id.parceiroId,
+      (id) => !PAPEIS_PARCEIRO.includes(id.papel) || solicitacao.parceiroId === id.parceiroId,
     );
     if (!permitido) {
       throw new ForbiddenException('Solicitação não pertence ao seu Parceiro.');
@@ -509,17 +731,18 @@ export class SolicitacoesService {
   }
 
   /**
-   * HU01 — regra crítica: o Mobilizador nunca recebe a etapa/tramitação interna,
-   * apenas o status macro consolidado e a devolutiva final.
+   * HU01 — regra crítica: Mobilizador e Presidente (mesma autonomia) nunca recebem a
+   * etapa/tramitação interna, apenas o status macro consolidado e a devolutiva final.
    */
   private aplicarRedacaoPorPapel(solicitacao: Solicitacao, usuario: UsuarioAutenticado): Solicitacao {
-    if (usuario.papel !== Papel.MOBILIZADOR) {
+    if (!PAPEIS_PARCEIRO.includes(usuario.papel)) {
       return solicitacao;
     }
     const copia = { ...solicitacao } as any;
     delete copia.etapaAtual;
     delete copia.motivoDevolucaoOuRecusa;
     delete copia.coordenadorDesignadoId;
+    delete copia.diretoresDesignadosIds;
     return copia;
   }
 
@@ -530,6 +753,10 @@ export class SolicitacoesService {
   private mapSolicitacao(solicitacao: Solicitacao) {
     return {
       ...solicitacao,
+      // A coluna no banco chama "observacao" (herdada do desenho inicial), mas o
+      // contrato com o frontend usa "resumoObservacoes" — sem isso, o Resumo /
+      // Observações preenchido pelo Mobilizador/Presidente nunca aparece na tela.
+      resumoObservacoes: solicitacao.observacao,
       parceiroNome: solicitacao.parceiro?.sigla,
       presidenteNome: solicitacao.parceiro?.presidente?.nome,
       mobilizadorNome: solicitacao.mobilizador?.nome,

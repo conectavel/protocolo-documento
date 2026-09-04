@@ -4,10 +4,12 @@ import {
   IsArray,
   IsEnum,
   IsISO8601,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Min,
   ValidateNested,
 } from 'class-validator';
 import { TipoItem, Turno } from '../../../common/enums/solicitacao.enum';
@@ -28,6 +30,15 @@ export class CriarItemSolicitacaoDto {
 
   @IsOptional() @IsISO8601() dataInicio?: string;
   @IsOptional() @IsISO8601() dataFim?: string;
+
+  // Solicitação de Itens
+  @IsOptional() @IsInt() @Min(1) quantidade?: number;
+
+  // Convite
+  @IsOptional() @IsString() hora?: string;
+  @IsOptional() @IsString() local?: string;
+  @IsOptional() @IsString() responsavel?: string;
+  @IsOptional() @IsString() telefone?: string;
 }
 
 export class CriarSolicitacaoDto {
@@ -38,7 +49,7 @@ export class CriarSolicitacaoDto {
   @IsNotEmpty() @IsString() assunto: string;
   @IsOptional() @IsString() numeroDocumento?: string;
   @IsISO8601() dataDocumento: string;
-  @IsOptional() @IsString() observacao?: string;
+  @IsOptional() @IsString() resumoObservacoes?: string;
 
   @IsUUID() anexoOficioId: string;
 

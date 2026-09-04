@@ -1,0 +1,227 @@
+<div class="po-page-header">
+  <h1 class="po-page-title">
+    <mat-icon>manage_accounts</mat-icon>
+    Gerenciar Usuários
+  </h1>
+  <p class="po-page-subtitle">
+    <mat-icon>info</mat-icon>
+    Ative, desative, coloque um substituto temporário ou transfira o trabalho de um usuário que saiu.
+  </p>
+</div>
+
+<div class="po-card">
+  <div class="po-grid po-grid--2">
+    <mat-form-field appearance="outline">
+      <mat-label>Buscar por nome ou e-mail</mat-label>
+      <input matInput [ngModel]="busca()" (ngModelChange)="busca.set($event)" />
+      <mat-icon matSuffix>search</mat-icon>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Perfil</mat-label>
+      <mat-select [ngModel]="filtroPapel()" (ngModelChange)="filtroPapel.set($event)">
+        <mat-option value="">Todos os perfis</mat-option>
+        @for (papel of papelLabels | keyvalue; track papel.key) {
+          <mat-option [value]="papel.key">{{ papel.value }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+  </div>
+</div>
+
+@if (carregando()) {
+  <app-loading-state mensagem="Carregando usuários…"></app-loading-state>
+} @else {
+  @for (grupoNivel of gruposPorGrupo(); track grupoNivel.titulo) {
+    <div class="po-grupo-secao">
+      <h2 class="po-grupo-secao__titulo">{{ grupoNivel.titulo }}</h2>
+
+      @for (grupo of grupoNivel.papeis; track grupo.papel) {
+        <div class="po-card">
+          <div class="po-card-section-title">
+            <span>{{ papelLabels[grupo.papel] }}</span>
+            <div class="po-card-section-title__acoes">
+              <span class="po-chip po-chip--neutral">Total: {{ grupo.usuarios.length }}</span>
+              @if (papeisGerenciaveis.includes(grupo.papel)) {
+                <button mat-stroked-button color="primary" type="button" (click)="adicionarUsuario(grupo.papel)">
+                  <mat-icon>person_add</mat-icon>
+                  Adicionar {{ papelLabels[grupo.papel] }}
+                </button>
+              }
+            </div>
+          </div>
+          <div class="po-divider-gradient"></div>
+
+          @for (usuario of grupo.usuarios; track usuario.id) {
+        <div class="po-usuario-bloco">
+          <div class="po-usuario-linha" [class.po-usuario-linha--inativo]="!usuario.ativo">
+            @if (papeisComDetalhe.includes(usuario.papel)) {
+              <button
+                type="button"
+                class="po-usuario-linha__expandir"
+                (click)="toggleExpandir(usuario)"
+                [matTooltip]="expandidoId() === usuario.id ? 'Ocultar detalhes' : 'Ver detalhes do perfil'"
+              >
+                <mat-icon>{{ expandidoId() === usuario.id ? 'expand_less' : 'expand_more' }}</mat-icon>
+              </button>
+            } @else {
+              <span class="po-usuario-linha__expandir po-usuario-linha__expandir--vazio"></span>
+            }
+
+            <div class="po-usuario-linha__info">
+              <span class="po-usuario-linha__nome">{{ usuario.nome }}</span>
+              <span class="po-usuario-linha__email">{{ usuario.email }}</span>
+            </div>
+
+            <span
+              class="po-chip"
+              [class.po-chip--success]="usuario.ativo"
+              [class.po-chip--neutral]="!usuario.ativo"
+            >
+              {{ usuario.ativo ? 'Ativo' : 'Inativo' }}
+            </span>
+
+            <mat-slide-toggle
+              [checked]="usuario.ativo"
+              (change)="alternarStatus(usuario)"
+              matTooltip="{{ usuario.ativo ? 'Desativar' : 'Ativar' }}"
+            ></mat-slide-toggle>
+
+            <button
+              mat-stroked-button
+              color="primary"
+              type="button"
+              (click)="colocarSubstituto()"
+              matTooltip="Colocar um substituto temporário (férias, afastamento)"
+            >
+              <mat-icon>swap_horiz</mat-icon>
+              Substituto
+            </button>
+
+            @if (papeisComProcessos.includes(usuario.papel)) {
+              <button
+                mat-stroked-button
+                color="warn"
+                type="button"
+                (click)="transferirProcessos(usuario)"
+                matTooltip="Desligamento — transferir o trabalho em aberto para outro usuário"
+              >
+                <mat-icon>move_up</mat-icon>
+                Transferir Processos
+              </button>
+            }
+          </div>
+
+          @if (expandidoId() === usuario.id) {
+            <div class="po-usuario-detalhe">
+              @if (carregandoContexto() && !contextoDe(usuario.id)) {
+                <p class="po-hint">Carregando…</p>
+              } @else {
+                @if (contextoCoordenadorRegional(usuario.id); as contexto) {
+                  <div class="po-usuario-detalhe__titulo">
+                    <mat-icon>account_balance</mat-icon>
+                    Sindicatos parceiros atendidos por esta regional
+                  </div>
+                  @if (contexto.parceiros.length === 0) {
+                    <p class="po-hint">Nenhum sindicato parceiro do SENAR-GO vinculado a esta regional ainda.</p>
+                  } @else {
+                    <div class="po-usuario-detalhe__chips">
+                      @for (parceiro of contexto.parceiros; track parceiro.id) {
+                        <span class="po-chip" [class.po-chip--success]="parceiro.ativo" [class.po-chip--neutral]="!parceiro.ativo">
+                          {{ parceiro.sigla }} — {{ parceiro.razaoSocial }}
+                        </span>
+                      }
+                    </div>
+                  }
+                }
+
+                @if (contextoGestor(usuario.id); as contexto) {
+                  <div class="po-usuario-detalhe__titulo">
+                    <mat-icon>folder_special</mat-icon>
+                    Área/Programa sob gestão
+                  </div>
+                  @if (!contexto.area) {
+                    <p class="po-hint">Este Gestor ainda não está vinculado a nenhuma Área/Programa.</p>
+                  } @else {
+                    <p class="po-usuario-detalhe__subtitulo">{{ contexto.area.nome }} ({{ contexto.area.codigo }})</p>
+                    <div class="po-usuario-detalhe__chips">
+                      @for (coordenador of contexto.coordenadores; track coordenador.id) {
+                        <span class="po-chip po-chip--neutral">{{ coordenador.nome }}</span>
+                      }
+                      @if (contexto.coordenadores.length === 0) {
+                        <p class="po-hint">Nenhum Coordenador atende esta área ainda.</p>
+                      }
+                    </div>
+                  }
+                }
+
+                @if (contextoCoordenador(usuario.id); as contexto) {
+                  <div class="po-usuario-detalhe__titulo">
+                    <mat-icon>rule</mat-icon>
+                    Áreas/Programa que este Coordenador pode atender
+                  </div>
+                  <p class="po-usuario-detalhe__subtitulo">
+                    Um Coordenador pode atender mais de uma área — marque todas as que se aplicam.
+                  </p>
+                  <div class="po-usuario-detalhe__areas">
+                    @for (area of contexto.areas; track area.id) {
+                      <label class="po-usuario-detalhe__area-opcao" [class.po-usuario-detalhe__area-opcao--marcada]="areaMarcada(area.id)">
+                        <input type="checkbox" [checked]="areaMarcada(area.id)" (change)="toggleArea(area.id)" />
+                        {{ area.nome }}
+                      </label>
+                    }
+                  </div>
+                  <button
+                    mat-flat-button
+                    color="primary"
+                    type="button"
+                    class="po-mt-16"
+                    [disabled]="salvandoAreas()"
+                    (click)="salvarAreas(usuario)"
+                  >
+                    <mat-icon>save</mat-icon>
+                    Salvar Áreas/Programa
+                  </button>
+                }
+
+                @if (contextoDiretor(usuario.id); as contexto) {
+                  <div class="po-usuario-detalhe__titulo">
+                    <mat-icon>folder_shared</mat-icon>
+                    Pasta / Departamento sob responsabilidade
+                  </div>
+                  <div class="po-usuario-detalhe__form">
+                    <mat-form-field appearance="outline">
+                      <mat-label>Pasta / Departamento</mat-label>
+                      <input
+                        matInput
+                        [ngModel]="departamentoEditando()"
+                        (ngModelChange)="departamentoEditando.set($event)"
+                        placeholder="Ex.: Educacional, Formação Profissional…"
+                      />
+                    </mat-form-field>
+                    <button
+                      mat-flat-button
+                      color="primary"
+                      type="button"
+                      [disabled]="salvandoDepartamento()"
+                      (click)="salvarDepartamento(usuario)"
+                    >
+                      <mat-icon>save</mat-icon>
+                      Salvar
+                    </button>
+                  </div>
+                }
+              }
+            </div>
+          }
+        </div>
+      }
+        </div>
+      }
+    </div>
+  }
+
+  @if (gruposPorGrupo().length === 0) {
+    <app-empty-state mensagem="Nenhum usuário encontrado."></app-empty-state>
+  }
+}

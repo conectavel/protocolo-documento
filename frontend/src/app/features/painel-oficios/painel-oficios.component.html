@@ -147,10 +147,22 @@
 } @else if (!modoTabela()) {
   <div class="po-cards-grid">
     @for (solicitacao of solicitacoesFiltradas(); track solicitacao.id) {
-      <div class="po-list-card">
+      <div class="po-list-card" [class.po-list-card--precisa-correcao]="precisaCorrecaoDoMobilizador(solicitacao)">
+        @if (precisaCorrecaoDoMobilizador(solicitacao)) {
+          <span class="po-list-card__pulso-correcao" matTooltip="Devolvido pela Assessoria — precisa de correção"></span>
+        }
         <div class="po-list-card__header">
           <mat-icon class="po-list-card__title-icon">description</mat-icon>
           <span class="po-list-card__title">{{ solicitacao.assunto }}</span>
+          @if (solicitacao.emailRemetenteOrigem) {
+            <span
+              class="po-chip po-chip--info po-list-card__origem-email"
+              [matTooltip]="'Recebido por e-mail de ' + solicitacao.emailRemetenteOrigem"
+            >
+              <mat-icon>mark_email_unread</mat-icon>
+              E-mail
+            </span>
+          }
 
           <button
             mat-icon-button
@@ -168,6 +180,13 @@
             </div>
           </mat-menu>
         </div>
+
+        @if (solicitacao.numeroProcesso) {
+          <div class="po-list-card__numero-processo">
+            <mat-icon>tag</mat-icon>
+            Nº {{ solicitacao.numeroProcesso }}
+          </div>
+        }
 
         <div class="po-list-card__row">
           <mat-icon style="color: var(--row-icon-1)">badge</mat-icon>
@@ -200,6 +219,12 @@
           <mat-icon style="color: var(--row-icon-8)">update</mat-icon>
           <span><strong>Data do documento:</strong> {{ solicitacao.dataDocumento | date: 'dd/MM/yyyy' }}</span>
         </div>
+        @if (solicitacao.alteradoEm) {
+          <div class="po-list-card__row">
+            <mat-icon style="color: var(--row-icon-7)">history</mat-icon>
+            <span><strong>Data da tramitação:</strong> {{ solicitacao.alteradoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+          </div>
+        }
 
         <div class="po-list-card__footer">
           @if (solicitacao.anexoOficioId) {
@@ -236,6 +261,32 @@
             Ver detalhe
           </a>
         </div>
+
+        @if (emTramitacao(solicitacao)) {
+          @if (podeTramitar(solicitacao)) {
+            <a
+              mat-flat-button
+              color="primary"
+              class="po-list-card__tramitar"
+              [routerLink]="['/solicitacoes', solicitacao.id]"
+              matTooltip="Há uma ação sua pendente nesta solicitação"
+            >
+              <mat-icon>alt_route</mat-icon>
+              Realizar Tramitação
+            </a>
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              disabled
+              class="po-list-card__tramitar po-list-card__tramitar--info"
+              matTooltip="Aguardando ação de outro responsável no fluxo"
+            >
+              <mat-icon>hourglass_empty</mat-icon>
+              Em Tramitação
+            </button>
+          }
+        }
       </div>
     }
   </div>
@@ -244,6 +295,7 @@
     <table class="po-table">
       <thead>
         <tr>
+          <th>Nº Processo</th>
           <th>Nº Documento</th>
           <th>Parceiro</th>
           <th>Município</th>
@@ -258,6 +310,7 @@
       <tbody>
         @for (solicitacao of solicitacoesFiltradas(); track solicitacao.id) {
           <tr>
+            <td><strong>{{ solicitacao.numeroProcesso ? 'Nº ' + solicitacao.numeroProcesso : '—' }}</strong></td>
             <td>{{ solicitacao.numeroDocumento || '—' }}</td>
             <td>{{ solicitacao.parceiroNome || '—' }}</td>
             <td>{{ solicitacao.municipio || '—' }}</td>

@@ -31,10 +31,22 @@
         <mat-label>Presidente</mat-label>
         <input matInput [value]="parceiro()?.presidenteNome || '—'" readonly />
       </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Mobilizador</mat-label>
-        <input matInput [value]="parceiro()?.mobilizadorNome || '—'" readonly />
-      </mat-form-field>
+      @if (ehPresidente()) {
+        <mat-form-field appearance="outline" [formGroup]="documentoForm">
+          <mat-label>Mobilizador</mat-label>
+          <mat-select formControlName="mobilizadorId">
+            @for (mobilizador of parceiro()?.mobilizadores; track mobilizador.id) {
+              <mat-option [value]="mobilizador.id">{{ mobilizador.nome }}</mat-option>
+            }
+          </mat-select>
+          <mat-hint>Em nome de qual Mobilizador do seu Parceiro você está protocolando</mat-hint>
+        </mat-form-field>
+      } @else {
+        <mat-form-field appearance="outline">
+          <mat-label>Mobilizador</mat-label>
+          <input matInput [value]="usuario()?.nome || '—'" readonly />
+        </mat-form-field>
+      }
       <mat-form-field appearance="outline">
         <mat-label>Coordenador Regional</mat-label>
         <input matInput [value]="parceiro()?.coordenadorRegionalNome || '—'" readonly />
@@ -69,7 +81,21 @@
 
     <mat-form-field appearance="outline">
       <mat-label>Data do Documento</mat-label>
-      <input matInput [matDatepicker]="pickerDoc" formControlName="dataDocumento" />
+      <input
+        matInput
+        [matDatepicker]="pickerDoc"
+        formControlName="dataDocumento"
+        (keydown)="bloquearTeclasInvalidasNaData($event)"
+      />
+      <button
+        mat-icon-button
+        matIconSuffix
+        type="button"
+        matTooltip="Usar a data de hoje"
+        (click)="definirDataDocumentoHoje()"
+      >
+        <mat-icon>today</mat-icon>
+      </button>
       <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
       <mat-datepicker #pickerDoc></mat-datepicker>
       @if (documentoForm.controls.dataDocumento.invalid && documentoForm.controls.dataDocumento.touched) {
@@ -83,13 +109,30 @@
     </mat-form-field>
   </form>
 
-  @if (!arquivo() || !anexoId()) {
+  @if (!anexoId()) {
     <div class="po-upload">
       <label class="po-upload__botao">
         <mat-icon>cloud_upload</mat-icon>
         Selecionar arquivo
         <input type="file" accept="application/pdf" (change)="selecionarArquivo($event)" hidden />
       </label>
+
+      <button
+        mat-stroked-button
+        color="primary"
+        type="button"
+        class="po-upload__botao-gerar"
+        [disabled]="gerandoModelo() || enviandoArquivo()"
+        matTooltip="Gera um PDF de ofício padrão a partir do que você já preencheu (Parceiro, Presidente, Mobilizador e os itens abaixo)"
+        (click)="gerarOficioComItens()"
+      >
+        @if (gerandoModelo()) {
+          <mat-spinner diameter="18"></mat-spinner>
+        } @else {
+          <mat-icon>auto_awesome</mat-icon>
+        }
+        Criar ofício com os itens
+      </button>
 
       @if (enviandoArquivo()) {
         <span class="po-upload__status">
@@ -98,6 +141,10 @@
         </span>
       }
     </div>
+    <p class="po-hint">
+      Não tem o ofício em PDF pronto? Preencha o Assunto e os itens abaixo e clique em
+      "Criar ofício com os itens" para gerar um documento padrão automaticamente.
+    </p>
   } @else {
     <app-pdf-viewer
       [anexoId]="anexoId()!"
@@ -123,37 +170,78 @@
   <div class="po-divider-gradient"></div>
 
   <form [formGroup]="itemForm" class="po-grid">
-    <mat-form-field appearance="outline">
-      <mat-label>Tipo</mat-label>
-      <mat-select formControlName="tipo">
-        @for (tipo of tiposItem; track tipo) {
-          <mat-option [value]="tipo">{{ tipoItemLabels[tipo] }}</mat-option>
-        }
-      </mat-select>
-    </mat-form-field>
-
     @if (tipoAtualTemTitulo) {
-      <mat-form-field appearance="outline">
-        <mat-label>Título</mat-label>
-        <input matInput formControlName="titulo" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Data início</mat-label>
-        <input matInput [matDatepicker]="pickerItemInicio" formControlName="dataInicio" />
-        <mat-datepicker-toggle matIconSuffix [for]="pickerItemInicio"></mat-datepicker-toggle>
-        <mat-datepicker #pickerItemInicio></mat-datepicker>
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Data fim</mat-label>
-        <input matInput [matDatepicker]="pickerItemFim" formControlName="dataFim" />
-        <mat-datepicker-toggle matIconSuffix [for]="pickerItemFim"></mat-datepicker-toggle>
-        <mat-datepicker #pickerItemFim></mat-datepicker>
-      </mat-form-field>
+      <div class="po-tipo-titulo-datas">
+        <mat-form-field appearance="outline">
+          <mat-label>Tipo</mat-label>
+          <mat-select formControlName="tipo">
+            @for (tipo of tiposItem; track tipo) {
+              <mat-option [value]="tipo">{{ tipoItemLabels[tipo] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Título</mat-label>
+          <input matInput formControlName="titulo" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data início</mat-label>
+          <input matInput [matDatepicker]="pickerItemInicio" formControlName="dataInicio" />
+          <mat-datepicker-toggle matIconSuffix [for]="pickerItemInicio"></mat-datepicker-toggle>
+          <mat-datepicker #pickerItemInicio></mat-datepicker>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data fim</mat-label>
+          <input matInput [matDatepicker]="pickerItemFim" formControlName="dataFim" />
+          <mat-datepicker-toggle matIconSuffix [for]="pickerItemFim"></mat-datepicker-toggle>
+          <mat-datepicker #pickerItemFim></mat-datepicker>
+        </mat-form-field>
+
+        @if (itemForm.controls.tipo.value === 'CONVITE') {
+          <mat-form-field appearance="outline">
+            <mat-label>Horário</mat-label>
+            <input matInput type="time" formControlName="hora" />
+          </mat-form-field>
+        }
+      </div>
+
+      @if (itemForm.controls.tipo.value === 'SOLICITACAO_ITENS') {
+        <mat-form-field appearance="outline">
+          <mat-label>Quantidade</mat-label>
+          <input matInput type="number" min="1" formControlName="quantidade" />
+        </mat-form-field>
+      }
+
+      @if (itemForm.controls.tipo.value === 'CONVITE') {
+        <div class="po-tipo-titulo-datas">
+          <mat-form-field appearance="outline">
+            <mat-label>Local</mat-label>
+            <input matInput formControlName="local" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Responsável</mat-label>
+            <input matInput formControlName="responsavel" />
+          </mat-form-field>
+          <mat-form-field appearance="outline">
+            <mat-label>Telefone/WhatsApp</mat-label>
+            <input matInput formControlName="telefone" />
+          </mat-form-field>
+        </div>
+      }
+
       <mat-form-field appearance="outline" class="po-field-full">
         <mat-label>Resumo</mat-label>
         <textarea matInput rows="3" formControlName="resumo"></textarea>
       </mat-form-field>
     } @else {
+      <mat-form-field appearance="outline">
+        <mat-label>Tipo</mat-label>
+        <mat-select formControlName="tipo">
+          @for (tipo of tiposItem; track tipo) {
+            <mat-option [value]="tipo">{{ tipoItemLabels[tipo] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
       <mat-form-field appearance="outline">
         <mat-label>Tipo do Evento</mat-label>
         <mat-select formControlName="tipoEvento">
@@ -205,9 +293,14 @@
   }
 
   <div class="po-add-item-row">
+    @if (editandoIndice() !== null) {
+      <button mat-stroked-button type="button" (click)="cancelarEdicaoItem()">
+        Cancelar edição
+      </button>
+    }
     <button mat-flat-button color="primary" type="button" (click)="adicionarItem()">
-      <mat-icon>add</mat-icon>
-      Adicionar item
+      <mat-icon>{{ editandoIndice() !== null ? 'save' : 'add' }}</mat-icon>
+      {{ editandoIndice() !== null ? 'Salvar alterações' : 'Adicionar item' }}
     </button>
   </div>
 
@@ -216,30 +309,55 @@
       <p class="po-hint">Nenhum item adicionado ainda.</p>
     }
     @for (item of itens(); track $index) {
-      <div class="po-nested-block">
-        <div class="po-nested-block__cabecalho">
-          <span class="po-chip po-chip--neutral">{{ tipoItemLabels[item.tipo] }}</span>
-          <span class="po-nested-block__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</span>
+      <div class="po-item-card" [class.po-item-card--editando]="editandoIndice() === $index">
+        <div class="po-item-card__header">
+          <div class="po-item-card__icone" [ngClass]="'po-item-card__icone--' + item.tipo">
+            <mat-icon>{{ tipoItemIcones[item.tipo] }}</mat-icon>
+          </div>
+          <span class="po-chip po-chip--neutral po-item-card__chip">{{ tipoItemLabels[item.tipo] }}</span>
         </div>
+        <h4 class="po-item-card__titulo">{{ item.titulo || item.acaoAtividade || '—' }}</h4>
+        @if (item.tipoEvento) {
+          <p class="po-item-card__linha">Tipo do Evento: {{ item.tipoEvento }}</p>
+        }
         @if (item.resumo) {
-          <p class="po-nested-block__linha">{{ item.resumo }}</p>
+          <p class="po-item-card__linha">{{ item.resumo }}</p>
+        }
+        @if (item.quantidade) {
+          <p class="po-item-card__linha">Quantidade: {{ item.quantidade }}</p>
+        }
+        @if (item.local || item.responsavel || item.telefone) {
+          <p class="po-item-card__linha">
+            @if (item.local) { Local: {{ item.local }} }
+            @if (item.hora) { · Horário: {{ item.hora }} }
+            @if (item.responsavel) { · Responsável: {{ item.responsavel }} }
+            @if (item.telefone) { · {{ item.telefone }} }
+          </p>
         }
         @if (item.disciplina) {
-          <p class="po-nested-block__linha">Disciplina: {{ item.disciplina }}</p>
+          <p class="po-item-card__linha">Disciplina: {{ item.disciplina }}</p>
         }
         @if (item.turno) {
-          <p class="po-nested-block__linha">Turno: {{ turnoLabels[item.turno] || item.turno }}</p>
+          <p class="po-item-card__linha">Turno: {{ turnoLabels[item.turno] || item.turno }}</p>
         }
-        <button
-          mat-stroked-button
-          color="warn"
-          type="button"
-          class="po-nested-block__remover"
-          (click)="removerItem($index)"
-        >
-          <mat-icon>delete</mat-icon>
-          Remover
-        </button>
+        @if (item.dataInicio) {
+          <p class="po-item-card__linha">
+            Início: {{ item.dataInicio | date: 'dd/MM/yyyy' }}
+            @if (item.dataFim) {
+              · Fim: {{ item.dataFim | date: 'dd/MM/yyyy' }}
+            }
+          </p>
+        }
+        <div class="po-item-card__footer">
+          <button mat-stroked-button color="primary" type="button" (click)="editarItem($index)">
+            <mat-icon>edit</mat-icon>
+            Editar
+          </button>
+          <button mat-stroked-button color="warn" type="button" (click)="removerItem($index)">
+            <mat-icon>delete</mat-icon>
+            Remover
+          </button>
+        </div>
       </div>
     }
   </div>

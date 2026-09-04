@@ -52,12 +52,15 @@ export class PdfViewerComponent {
 
   constructor() {
     this.destroyRef.onDestroy(() => this.revogarUrl());
-    effect(() => {
-      const id = this.anexoId();
-      if (id) {
-        this.carregarPdf(id);
-      }
-    });
+    effect(
+      () => {
+        const id = this.anexoId();
+        if (id) {
+          this.carregarPdf(id);
+        }
+      },
+      { allowSignalWrites: true },
+    );
   }
 
   private carregarPdf(anexoId: string): void {

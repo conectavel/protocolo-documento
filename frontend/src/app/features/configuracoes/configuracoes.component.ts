@@ -48,6 +48,7 @@ export class ConfiguracoesComponent implements OnInit {
 
   readonly canalSistema = signal(true);
   readonly canalPush = signal(false);
+  readonly canalEmail = signal(false);
   readonly tiposAtivos = signal<Set<string>>(new Set());
   readonly tiposDisponiveis = signal<TipoNotificacao[]>([]);
 
@@ -110,6 +111,7 @@ export class ConfiguracoesComponent implements OnInit {
       .salvar({
         canalSistema: this.canalSistema(),
         canalPush: this.canalPush(),
+        canalEmail: this.canalEmail(),
         tiposAtivos: [...this.tiposAtivos()],
       })
       .subscribe({
@@ -128,6 +130,7 @@ export class ConfiguracoesComponent implements OnInit {
   private aplicarPreferencias(prefs: PreferenciasNotificacao): void {
     this.canalSistema.set(prefs.canalSistema);
     this.canalPush.set(prefs.canalPush && this.permissaoPush() === 'granted');
+    this.canalEmail.set(prefs.canalEmail);
     this.tiposAtivos.set(new Set(prefs.tiposAtivos));
     this.tiposDisponiveis.set(prefs.tiposDisponiveis);
     this.carregando.set(false);
