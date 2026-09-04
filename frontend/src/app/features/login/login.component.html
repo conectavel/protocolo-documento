@@ -101,24 +101,67 @@
         <div class="login-card__debug">
           <div class="login-card__debug-titulo">
             <mat-icon>bug_report</mat-icon>
-            Modo debug — entrar direto como
-          </div>
-          <div class="login-card__debug-grid">
-            @for (usuario of usuariosDebug; track usuario.email) {
-              <button
-                mat-stroked-button
-                type="button"
-                [disabled]="carregando()"
-                (click)="entrarComoDebug(usuario)"
-              >
-                @if (papelEmLogin() === usuario.papel) {
-                  <mat-spinner diameter="16"></mat-spinner>
-                } @else {
-                  <span>{{ usuario.papel }}</span>
-                }
+            @if (papelSelecionado()) {
+              <button type="button" class="login-card__debug-voltar" (click)="voltarParaPapeisDebug()">
+                <mat-icon>arrow_back</mat-icon>
               </button>
+              Entrar como — {{ papelLabels[papelSelecionado()!] }}
+            } @else {
+              Modo debug — entrar direto como
             }
           </div>
+
+          @if (carregandoUsuariosDebug()) {
+            <p class="login-card__debug-hint">Carregando usuários…</p>
+          } @else if (!papelSelecionado()) {
+            <div class="login-card__debug-grid">
+              @for (papel of papeisDisponiveis(); track papel) {
+                <button mat-stroked-button type="button" (click)="selecionarPapelDebug(papel)">
+                  <span>{{ papelLabels[papel] }}</span>
+                </button>
+              }
+            </div>
+          } @else {
+            @if (usuariosDoPapelSelecionado().length > 6) {
+              <div class="login-card__debug-busca">
+                <mat-icon>search</mat-icon>
+                <input
+                  type="text"
+                  placeholder="Buscar por sindicato, nome ou e-mail…"
+                  [value]="filtroUsuarioDebug()"
+                  (input)="filtroUsuarioDebug.set($any($event.target).value)"
+                />
+              </div>
+            }
+            <div class="login-card__debug-grid login-card__debug-grid--usuarios">
+              @for (usuario of usuariosDoPapelSelecionadoFiltrados(); track usuario.email) {
+                <button
+                  mat-stroked-button
+                  type="button"
+                  [disabled]="carregando()"
+                  (click)="entrarComoDebug(usuario)"
+                >
+                  @if (papelEmLogin() === usuario.email) {
+                    <mat-spinner diameter="16"></mat-spinner>
+                  } @else {
+                    <span class="login-card__debug-usuario">
+                      <strong>{{ rotuloDebug(usuario) }}</strong>
+                      <small>{{ usuario.email }}</small>
+                    </span>
+                  }
+                </button>
+              }
+              @if (usuariosDoPapelSelecionadoFiltrados().length === 0) {
+                <p class="login-card__debug-hint">
+                  @if (usuariosDoPapelSelecionado().length === 0) {
+                    Nenhum usuário ativo com este perfil.
+                  } @else {
+                    Nenhum usuário encontrado para "{{ filtroUsuarioDebug() }}".
+                  }
+                </p>
+              }
+            </div>
+          }
         </div>
       }
     </div>

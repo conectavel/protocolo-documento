@@ -7,12 +7,15 @@ import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { Usuario } from '../usuarios/entities/usuario.entity';
+import { Mobilizador } from '../parceiros/entities/mobilizador.entity';
+import { Parceiro } from '../parceiros/entities/parceiro.entity';
+import { CoordenadorRegional } from '../parceiros/entities/coordenador-regional.entity';
 import { ParceirosModule } from '../parceiros/parceiros.module';
 import { UsuariosModule } from '../usuarios/usuarios.module';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Usuario]),
+    TypeOrmModule.forFeature([Usuario, Mobilizador, Parceiro, CoordenadorRegional]),
     PassportModule,
     ParceirosModule,
     UsuariosModule,

@@ -15,6 +15,6 @@ import { ParceirosController } from './parceiros.controller';
   ],
   controllers: [ParceirosController],
   providers: [ParceirosService],
-  exports: [ParceirosService],
+  exports: [ParceirosService, TypeOrmModule],
 })
 export class ParceirosModule {}

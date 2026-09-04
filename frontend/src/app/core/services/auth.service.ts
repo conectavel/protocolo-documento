@@ -2,7 +2,14 @@ import { Injectable, computed, signal } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, map, switchMap, tap } from 'rxjs';
 import { environment } from '../../../environments/environment';
-import { LoginRequest, LoginResponse, Usuario } from '../models';
+import { LoginRequest, LoginResponse, Papel, Usuario } from '../models';
+
+export interface UsuarioDebug {
+  papel: Papel;
+  nome: string;
+  email: string;
+  sindicato: string | null;
+}
 
 const TOKEN_KEY = 'po_access_token';
 const USUARIO_KEY = 'po_usuario';
@@ -27,6 +34,11 @@ export class AuthService {
         this.buscarUsuarioAtual().pipe(map((usuarioCompleto) => ({ ...resposta, usuario: usuarioCompleto })))
       )
     );
+  }
+
+  /** Modo debug (tela de Login, fora de produção) — todos os usuários ativos, por papel. */
+  listarUsuariosDebug(): Observable<UsuarioDebug[]> {
+    return this.http.get<UsuarioDebug[]>(`${environment.apiUrl}/auth/debug/usuarios`);
   }
 
   buscarUsuarioAtual(): Observable<Usuario> {

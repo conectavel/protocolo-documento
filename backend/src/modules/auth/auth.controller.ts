@@ -14,6 +14,12 @@ export class AuthController {
     return this.authService.login(dto.email, dto.senha);
   }
 
+  /** Login rápido (modo debug, fora de produção) — lista todos os usuários por papel. */
+  @Get('debug/usuarios')
+  listarUsuariosDebug() {
+    return this.authService.listarUsuariosDebug();
+  }
+
   @Get('me')
   @UseGuards(JwtAuthGuard)
   me(@UsuarioAtual() usuario: UsuarioAutenticado): UsuarioAutenticado {

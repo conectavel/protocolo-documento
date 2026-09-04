@@ -87,17 +87,14 @@
         formControlName="dataDocumento"
         (keydown)="bloquearTeclasInvalidasNaData($event)"
       />
-      <button
-        mat-icon-button
-        matIconSuffix
-        type="button"
-        matTooltip="Usar a data de hoje"
-        (click)="definirDataDocumentoHoje()"
-      >
-        <mat-icon>today</mat-icon>
-      </button>
       <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
-      <mat-datepicker #pickerDoc></mat-datepicker>
+      <mat-datepicker #pickerDoc>
+        <mat-datepicker-actions>
+          <button mat-button matDatepickerCancel>Cancelar</button>
+          <button mat-button type="button" (click)="definirDataDocumentoHoje(pickerDoc)">Hoje</button>
+          <button mat-flat-button color="primary" matDatepickerApply>Aplicar</button>
+        </mat-datepicker-actions>
+      </mat-datepicker>
       @if (documentoForm.controls.dataDocumento.invalid && documentoForm.controls.dataDocumento.touched) {
         <mat-error>Informe a data do documento</mat-error>
       }

@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { Router } from '@angular/router';
 import { MatButtonModule } from '@angular/material/button';
-import { MatDatepickerModule } from '@angular/material/datepicker';
+import { MatDatepicker, MatDatepickerModule } from '@angular/material/datepicker';
 import { MatDialog } from '@angular/material/dialog';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
@@ -226,8 +226,12 @@ export class ProtocolarOficioComponent implements OnInit {
     }
   }
 
-  definirDataDocumentoHoje(): void {
-    this.documentoForm.controls.dataDocumento.setValue(new Date());
+  /** Seleciona a data de hoje diretamente no calendário aberto e fecha o seletor. */
+  definirDataDocumentoHoje(picker: MatDatepicker<Date>): void {
+    const hoje = new Date();
+    picker.select(hoje);
+    this.documentoForm.controls.dataDocumento.markAsTouched();
+    picker.close();
   }
 
   selecionarArquivo(evento: Event): void {

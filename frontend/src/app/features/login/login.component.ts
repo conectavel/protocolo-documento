@@ -1,4 +1,4 @@
-import { ChangeDetectionStrategy, Component, inject, signal } from '@angular/core';
+import { ChangeDetectionStrategy, Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
@@ -8,30 +8,12 @@ import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { HttpErrorResponse } from '@angular/common/http';
-import { AuthService } from '../../core/services/auth.service';
+import { AuthService, UsuarioDebug } from '../../core/services/auth.service';
+import { PAPEL_LABELS, Papel } from '../../core/models';
 import { environment } from '../../../environments/environment';
 
 /** Senha padrão de todos os usuários criados pelo seed de desenvolvimento (backend/src/database/seeds/seed.ts). */
 const SENHA_SEED = 'senar@123';
-
-interface UsuarioDebug {
-  papel: string;
-  email: string;
-}
-
-/** Um usuário representativo por papel, para login rápido em ambiente de desenvolvimento. */
-const USUARIOS_DEBUG: UsuarioDebug[] = [
-  { papel: 'Mobilizador', email: 'marcos.santos@senar-go.com.br' },
-  { papel: 'Presidente do Sindicato', email: 'eduardo.araujo@senar-go.com.br' },
-  { papel: 'Coordenador Regional', email: 'coordenador.regional@senar-go.com.br' },
-  { papel: 'Assessor(a) do Superintendente', email: 'assessor@senar-go.com.br' },
-  { papel: 'Superintendente', email: 'superintendente@senar-go.com.br' },
-  { papel: 'Diretor(a) Educacional', email: 'diretor.educacional@senar-go.com.br' },
-  { papel: 'Diretor(a) Educacional (2)', email: 'patricia.nogueira@senar-go.com.br' },
-  { papel: 'Gestor(a) (FPR)', email: 'carol@senar-go.com.br' },
-  { papel: 'Coordenador(a) (FPR)', email: 'claudimeire@senar-go.com.br' },
-  { papel: 'Administrador(a)', email: 'admin@senar-go.com.br' },
-];
 
 @Component({
   selector: 'app-login',
@@ -49,7 +31,7 @@ const USUARIOS_DEBUG: UsuarioDebug[] = [
   templateUrl: './login.component.html',
   styleUrl: './login.component.scss',
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly auth = inject(AuthService);
   private readonly router = inject(Router);
@@ -63,15 +45,64 @@ export class LoginComponent {
   );
   readonly ocultarSenha = signal(true);
 
-  /** Modo debug: login rápido por papel, disponível apenas fora de produção. */
+  /** Modo debug: login rápido, disponível apenas fora de produção. */
   readonly modoDebug = !environment.production;
-  readonly usuariosDebug = USUARIOS_DEBUG;
+  readonly papelLabels = PAPEL_LABELS;
+  readonly carregandoUsuariosDebug = signal(false);
+  readonly usuariosDebug = signal<UsuarioDebug[]>([]);
+  /** Papel escolhido no 1º passo do modo debug — null = ainda escolhendo o papel. */
+  readonly papelSelecionado = signal<Papel | null>(null);
   readonly papelEmLogin = signal<string | null>(null);
+  /** Filtro por nome/e-mail no 2º passo — útil quando o papel tem muitos usuários (ex.: Mobilizador, Presidente). */
+  readonly filtroUsuarioDebug = signal('');
+
+  /** Papéis com pelo menos um usuário ativo, na ordem em que aparecem na lista vinda do backend. */
+  readonly papeisDisponiveis = computed(() => {
+    const vistos = new Set<Papel>();
+    const ordem: Papel[] = [];
+    for (const usuario of this.usuariosDebug()) {
+      if (!vistos.has(usuario.papel)) {
+        vistos.add(usuario.papel);
+        ordem.push(usuario.papel);
+      }
+    }
+    return ordem;
+  });
+
+  readonly usuariosDoPapelSelecionado = computed(() => {
+    const papel = this.papelSelecionado();
+    if (!papel) return [];
+    return this.usuariosDebug().filter((u) => u.papel === papel);
+  });
+
+  readonly usuariosDoPapelSelecionadoFiltrados = computed(() => {
+    const termo = this.filtroUsuarioDebug().trim().toLowerCase();
+    const usuarios = this.usuariosDoPapelSelecionado();
+    if (!termo) return usuarios;
+    return usuarios.filter(
+      (u) =>
+        u.nome.toLowerCase().includes(termo) ||
+        u.email.toLowerCase().includes(termo) ||
+        (u.sindicato?.toLowerCase().includes(termo) ?? false),
+    );
+  });
 
   readonly formulario = this.fb.nonNullable.group({
     email: ['', [Validators.required, Validators.email]],
     senha: ['', [Validators.required, Validators.minLength(1)]],
   });
+
+  ngOnInit(): void {
+    if (!this.modoDebug) return;
+    this.carregandoUsuariosDebug.set(true);
+    this.auth.listarUsuariosDebug().subscribe({
+      next: (usuarios) => {
+        this.usuariosDebug.set(usuarios);
+        this.carregandoUsuariosDebug.set(false);
+      },
+      error: () => this.carregandoUsuariosDebug.set(false),
+    });
+  }
 
   alternarVisibilidadeSenha(): void {
     this.ocultarSenha.update((valor) => !valor);
@@ -87,9 +118,34 @@ export class LoginComponent {
     this.autenticar(email, senha);
   }
 
-  /** Modo debug — login rápido com um usuário de exemplo do papel escolhido (ver seed.ts). */
+  /**
+   * Rótulo do botão no modo debug — "Sindicato - Nome". Um Coordenador Regional
+   * cobre muitos sindicatos (1 Regional inteira); mostrar a lista toda ficaria
+   * ilegível, então trunca visualmente aqui — a busca continua batendo contra
+   * o texto completo de `usuario.sindicato` (ver usuariosDoPapelSelecionadoFiltrados).
+   */
+  rotuloDebug(usuario: UsuarioDebug): string {
+    if (!usuario.sindicato) return usuario.nome;
+    const limite = 60;
+    const sindicato =
+      usuario.sindicato.length > limite ? usuario.sindicato.slice(0, limite).trimEnd() + '…' : usuario.sindicato;
+    return `${sindicato} - ${usuario.nome}`;
+  }
+
+  /** Modo debug, 1º passo — escolhe o papel para ver todos os usuários reais daquele perfil. */
+  selecionarPapelDebug(papel: Papel): void {
+    this.papelSelecionado.set(papel);
+    this.filtroUsuarioDebug.set('');
+  }
+
+  voltarParaPapeisDebug(): void {
+    this.papelSelecionado.set(null);
+    this.filtroUsuarioDebug.set('');
+  }
+
+  /** Modo debug, 2º passo — login direto como o usuário escolhido (senha do seed). */
   entrarComoDebug(usuario: UsuarioDebug): void {
-    this.papelEmLogin.set(usuario.papel);
+    this.papelEmLogin.set(usuario.email);
     this.formulario.setValue({ email: usuario.email, senha: SENHA_SEED });
     this.autenticar(usuario.email, SENHA_SEED);
   }
