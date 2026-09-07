@@ -78,6 +78,11 @@ export class SolicitacoesController {
     return this.solicitacoesService.despacharSuperintendente(id, usuario, dto);
   }
 
+  @Post(':id/confirmar-direcionamento')
+  confirmarDirecionamento(@Param('id') id: string, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.solicitacoesService.confirmarDirecionamento(id, usuario);
+  }
+
   @Post('itens/:itemId/direcionamento-diretor')
   direcionarItem(
     @Param('itemId') itemId: string,

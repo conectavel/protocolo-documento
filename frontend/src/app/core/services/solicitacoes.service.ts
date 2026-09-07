@@ -77,6 +77,14 @@ export class SolicitacoesService {
     );
   }
 
+  /** "Análise e Providência" — Diretor confirma que terminou de direcionar todos os itens. */
+  confirmarDirecionamento(solicitacaoId: string): Observable<Solicitacao> {
+    return this.http.post<Solicitacao>(
+      `${this.baseUrl}/solicitacoes/${solicitacaoId}/confirmar-direcionamento`,
+      {}
+    );
+  }
+
   designarCoordenador(
     itemId: string,
     payload: DesignarCoordenadorRequest

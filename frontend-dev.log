@@ -1,0 +1,82 @@
+[1m[33mWarning: Running a server with --disable-host-check is a security risk. See https://medium.com/webpack/webpack-dev-server-middleware-security-issues-1489d950874a for more information.[39m[22m
+[1m[33mThe "disableHostCheck" option will not be used because it is not supported by the "@angular-devkit/build-angular:application" builder.[39m[22m
+[33m❯[39m Building...
+[32m✔[39m Building...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                            [2m | [22m [1mRaw size[22m
+[32mstyles.css[39m         [2m | [22m[2mstyles[22m                           [2m | [22m[36m187.56 kB[39m[2m | [22m
+[32mpolyfills.js[39m       [2m | [22m[2mpolyfills[22m                        [2m | [22m [36m90.20 kB[39m[2m | [22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                             [2m | [22m  [36m7.21 kB[39m[2m | [22m
+[32mchunk-FFQ3LOUK.js[39m  [2m | [22m[2m-[22m                                [2m | [22m  [36m2.70 kB[39m[2m | [22m
+[32mchunk-5TJQCFBD.js[39m  [2m | [22m[2m-[22m                                [2m | [22m  [36m1.95 kB[39m[2m | [22m
+
+[1m [22m                  [2m | [22m[1mInitial total[22m                    [2m | [22m[1m289.61 kB[22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                            [2m | [22m [1mRaw size[22m
+[32mchunk-JO5PGAUG.js[39m  [2m | [22m[2mdetalhe-solicitacao-component[22m    [2m | [22m[36m147.38 kB[39m[2m | [22m
+[32mchunk-ZNH3DTDO.js[39m  [2m | [22m[2mprotocolar-oficio-component[22m      [2m | [22m [36m66.60 kB[39m[2m | [22m
+[32mchunk-CP53I4LT.js[39m  [2m | [22m[2mgerenciar-usuarios-component[22m     [2m | [22m [36m66.01 kB[39m[2m | [22m
+[32mchunk-5GWBOP45.js[39m  [2m | [22m[2mconverter-pre-protocolo-component[22m[2m | [22m [36m50.90 kB[39m[2m | [22m
+[32mchunk-5VQ4335A.js[39m  [2m | [22m[2mpainel-oficios-component[22m         [2m | [22m [36m50.77 kB[39m[2m | [22m
+[32mchunk-Y5RWDJ34.js[39m  [2m | [22m[2m-[22m                                [2m | [22m [36m45.24 kB[39m[2m | [22m
+[32mchunk-ZQGKKXDX.js[39m  [2m | [22m[2mdashboard-component[22m              [2m | [22m [36m37.31 kB[39m[2m | [22m
+[32mchunk-OICFCJBU.js[39m  [2m | [22m[2mlogin-component[22m                  [2m | [22m [36m31.05 kB[39m[2m | [22m
+[32mchunk-PYU2DC4G.js[39m  [2m | [22m[2mpre-protocolo-lista-component[22m    [2m | [22m [36m27.12 kB[39m[2m | [22m
+[32mchunk-7PWMZALE.js[39m  [2m | [22m[2msubstitutos-component[22m            [2m | [22m [36m26.40 kB[39m[2m | [22m
+[32mchunk-TI6JZFOG.js[39m  [2m | [22m[2mshell-component[22m                  [2m | [22m [36m24.89 kB[39m[2m | [22m
+[32mchunk-32V265MD.js[39m  [2m | [22m[2mconfiguracoes-component[22m          [2m | [22m [36m17.81 kB[39m[2m | [22m
+[32mchunk-6JOCNTIQ.js[39m  [2m | [22m[2m-[22m                                [2m | [22m [36m11.88 kB[39m[2m | [22m
+[32mchunk-76CYAQ5Y.js[39m  [2m | [22m[2m-[22m                                [2m | [22m [36m10.15 kB[39m[2m | [22m
+[32mchunk-GXP7PJY3.js[39m  [2m | [22m[2m-[22m                                [2m | [22m  [36m6.78 kB[39m[2m | [22m
+[2m...and 9 more lazy chunks files. Use "--verbose" to show all the files.[22m
+
+Application bundle generation complete. [30.213 seconds]
+
+[1m[33m[33m▲ [43;33m[[43;30mWARNING[43;33m][0m [1mCannot use type selector "--warn" directly after nesting selector "&"[0m [1m[35m[plugin angular-compiler][0m [css-syntax-error]
+
+    angular:styles/component:css;0bbfda9b797718cdc604dc03af0308a518fac1ee78b6aad56e88f0f3b11f4906;C:/Users/diogo.pessoa/Downloads/Azure DevOps/Projetos/eSenar/e-Senar - Protocolo de Documentos/frontend/src/app/shared/components/confirmar-acao-dialog/confirmar-acao-dialog.component.ts:25:9:
+[37m      25 │         &[32m--warn[37m {
+         │          [32m~~~~~~[37m
+         ╵          [32m:is(--warn)[0m
+
+  CSS nesting syntax does not allow the "&" selector to come before a type selector. You can wrap this selector in ":is(...)" as a workaround. This restriction exists to avoid problems with SASS nesting, where the same syntax means something very different that has no equivalent in real CSS (appending a suffix to the parent selector).
+
+[39m[22m
+Watch mode enabled. Watching for file changes...
+NOTE: Raw file sizes do not reflect development server per-request transformations.
+  [32m➜[39m  [1mLocal[22m:   [36mhttp://localhost:[1m4200[22m/[39m
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                        [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                         [2m | [22m  [36m7.21 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                        [2m | [22m [1mRaw size[22m
+[32mchunk-BZESBNJ2.js[39m  [2m | [22m[2mdetalhe-solicitacao-component[22m[2m | [22m[36m147.38 kB[39m[2m | [22m
+[32mchunk-MLRVAJ4K.js[39m  [2m | [22m[2mprotocolar-oficio-component[22m  [2m | [22m [36m66.60 kB[39m[2m | [22m
+[32mchunk-CZU3OJTW.js[39m  [2m | [22m[2mpainel-oficios-component[22m     [2m | [22m [36m50.77 kB[39m[2m | [22m
+[32mchunk-44VY7KDI.js[39m  [2m | [22m[2m-[22m                            [2m | [22m  [36m3.32 kB[39m[2m | [22m
+
+Application bundle generation complete. [1.902 seconds]
+
+Page reload sent to client(s).
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                        [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                         [2m | [22m  [36m7.21 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                        [2m | [22m [1mRaw size[22m
+[32mchunk-46MV72ZQ.js[39m  [2m | [22m[2mdetalhe-solicitacao-component[22m[2m | [22m[36m147.80 kB[39m[2m | [22m
+
+Application bundle generation complete. [0.703 seconds]
+
+Page reload sent to client(s).
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                        [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                         [2m | [22m  [36m7.21 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                        [2m | [22m [1mRaw size[22m
+[32mchunk-PTZWT6FQ.js[39m  [2m | [22m[2mdetalhe-solicitacao-component[22m[2m | [22m[36m147.88 kB[39m[2m | [22m
+
+Application bundle generation complete. [0.515 seconds]
+
+Page reload sent to client(s).

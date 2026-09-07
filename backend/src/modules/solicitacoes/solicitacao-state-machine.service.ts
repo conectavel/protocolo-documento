@@ -1,4 +1,4 @@
-import { ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Solicitacao } from './entities/solicitacao.entity';
@@ -249,6 +249,37 @@ export class SolicitacaoStateMachineService {
     }
   }
 
+  /**
+   * "Análise e Providência" — chamado pelo Diretor quando encerra o
+   * direcionamento (todos os itens já têm Área/Programa, ou não precisam mais
+   * de uma porque foram excluídos do fluxo antes de chegar aqui). Antes desta
+   * correção o botão só disparava um toast no frontend, sem persistir nada:
+   * a solicitação nunca deixava de aparecer como "Diretor Educacional —
+   * Direcionamento" para os demais papéis internos, dando a impressão de que
+   * o processo tinha parado ali mesmo com os itens já roteados corretamente.
+   */
+  async confirmarDirecionamento(solicitacao: Solicitacao, usuario: UsuarioAutenticado): Promise<void> {
+    this.assertStatus(solicitacao, StatusMacro.EM_EXECUCAO);
+
+    const itens = await this.itemRepo.find({ where: { solicitacaoId: solicitacao.id } });
+    const pendente = itens.find(
+      (item) => !FINALIZADOS.includes(item.statusItem) && !item.areaProgramaId,
+    );
+    if (pendente) {
+      throw new BadRequestException('Ainda há itens sem Área/Programa direcionada.');
+    }
+
+    await this.recalcularEtapaDirecionamento(solicitacao);
+
+    await this.registrarTramitacao(solicitacao, {
+      deEtapa: 'Diretor Educacional — Direcionamento',
+      paraEtapa: solicitacao.etapaAtual ?? 'Aguardando designação do Gestor',
+      acao: AcaoTramitacao.CONFIRMAR_DIRECIONAMENTO,
+      usuario,
+      motivo: 'Diretor concluiu o direcionamento de todos os itens.',
+    });
+  }
+
   // ---------------------------------------------------------------- HU06
   async designarCoordenadorNoItem(
     item: ItemSolicitacao,
@@ -283,10 +314,15 @@ export class SolicitacaoStateMachineService {
    */
   private async recalcularEtapaDirecionamento(solicitacao: Solicitacao): Promise<void> {
     const itens = await this.itemRepo.find({ where: { solicitacaoId: solicitacao.id } });
+    // Itens já finalizados (ex.: excluídos do fluxo pela Assessoria/Superintendência,
+    // RN-09) nunca recebem areaProgramaId/coordenadorResponsavelId — sem filtrá-los
+    // aqui, `etapaAtual` ficava preso em "Direcionamento" para sempre nessas
+    // solicitações, mesmo depois do Diretor direcionar todos os itens restantes.
+    const itensAtivos = itens.filter((item) => !FINALIZADOS.includes(item.statusItem));
 
-    if (itens.some((item) => !item.areaProgramaId)) {
+    if (itensAtivos.some((item) => !item.areaProgramaId)) {
       solicitacao.etapaAtual = 'Diretor Educacional — Direcionamento';
-    } else if (itens.some((item) => !item.coordenadorResponsavelId)) {
+    } else if (itensAtivos.some((item) => !item.coordenadorResponsavelId)) {
       solicitacao.etapaAtual = 'Aguardando designação do Gestor';
     } else {
       solicitacao.etapaAtual = 'Execução';

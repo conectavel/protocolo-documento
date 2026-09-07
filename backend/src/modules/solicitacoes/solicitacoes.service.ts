@@ -538,6 +538,15 @@ export class SolicitacoesService {
     return this.buscarPorId(solicitacao.id, usuario);
   }
 
+  /** "Análise e Providência" — Diretor confirma que terminou de direcionar todos os itens. */
+  async confirmarDirecionamento(id: string, usuario: UsuarioAutenticado) {
+    this.exigirPapel(usuario, [Papel.DIRETOR_EDUCACIONAL, Papel.ADMIN]);
+    const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
+    this.exigirDiretorDesignado(usuario, solicitacao);
+    await this.stateMachine.confirmarDirecionamento(solicitacao, usuario);
+    return this.buscarPorId(solicitacao.id, usuario);
+  }
+
   async designarCoordenador(itemId: string, usuario: UsuarioAutenticado, dto: DesignarCoordenadorDto) {
     this.exigirPapel(usuario, [Papel.GESTOR, Papel.ADMIN]);
     const item = await this.buscarItemOuFalhar(itemId);

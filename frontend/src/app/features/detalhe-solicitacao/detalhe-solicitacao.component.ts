@@ -132,6 +132,7 @@ export class DetalheSolicitacaoComponent implements OnInit {
     RECUSAR: 'Recusar',
     DESPACHAR: 'Despachar',
     DIRECIONAR: 'Direcionar',
+    CONFIRMAR_DIRECIONAMENTO: 'Análise e Providência (confirmação)',
     DESIGNAR_COORDENADOR: 'Designar Coordenador',
     ACEITAR: 'Aceitar',
     ENCAMINHAR_OUTRA_AREA: 'Encaminhar para Outra Área',
@@ -740,8 +741,21 @@ export class DetalheSolicitacaoComponent implements OnInit {
   });
 
   confirmarAnaliseProvidencia(): void {
-    this.alerta.sucesso('Direcionamento concluído — a solicitação segue em Análise e Providência pelos Gestores.');
-    this.router.navigate(['/painel']);
+    if (!this.solicitacaoId) {
+      return;
+    }
+    this.executandoAcao.set(true);
+    this.solicitacoesService.confirmarDirecionamento(this.solicitacaoId).subscribe({
+      next: () => {
+        this.executandoAcao.set(false);
+        this.alerta.sucesso('Direcionamento concluído — a solicitação segue em Análise e Providência pelos Gestores.');
+        this.router.navigate(['/painel']);
+      },
+      error: () => {
+        this.executandoAcao.set(false);
+        this.alerta.erro('Não foi possível concluir o direcionamento. Tente novamente.');
+      },
+    });
   }
 
   direcionarItem(item: ItemSolicitacao): void {
