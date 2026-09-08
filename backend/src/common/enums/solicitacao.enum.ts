@@ -56,3 +56,11 @@ export enum Turno {
   NOITE = 'NOITE',
   INTEGRAL = 'INTEGRAL',
 }
+
+/** Classificação de urgência da demanda — livre, não altera o fluxo/SLA, só ajuda a priorizar visualmente. Toda solicitação nasce NORMAL. */
+export enum Urgencia {
+  BAIXA = 'BAIXA',
+  NORMAL = 'NORMAL',
+  ALTA = 'ALTA',
+  URGENTE = 'URGENTE',
+}

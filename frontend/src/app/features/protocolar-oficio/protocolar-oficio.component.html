@@ -69,36 +69,69 @@
       }
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Nº do Documento</mat-label>
-      <input matInput formControlName="numeroDocumento" />
-    </mat-form-field>
+    <div class="po-field-full po-grid-doc">
+      <mat-form-field appearance="outline">
+        <mat-label>Nº do Documento</mat-label>
+        <input matInput formControlName="numeroDocumento" />
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Município</mat-label>
-      <input matInput formControlName="municipio" />
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>UF</mat-label>
+        <mat-select formControlName="uf">
+          @for (uf of ufs; track uf.sigla) {
+            <mat-option [value]="uf.sigla">{{ uf.sigla }} — {{ uf.nome }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Data do Documento</mat-label>
-      <input
-        matInput
-        [matDatepicker]="pickerDoc"
-        formControlName="dataDocumento"
-        (keydown)="bloquearTeclasInvalidasNaData($event)"
-      />
-      <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
-      <mat-datepicker #pickerDoc>
-        <mat-datepicker-actions>
-          <button mat-button matDatepickerCancel>Cancelar</button>
-          <button mat-button type="button" (click)="definirDataDocumentoHoje(pickerDoc)">Hoje</button>
-          <button mat-flat-button color="primary" matDatepickerApply>Aplicar</button>
-        </mat-datepicker-actions>
-      </mat-datepicker>
-      @if (documentoForm.controls.dataDocumento.invalid && documentoForm.controls.dataDocumento.touched) {
-        <mat-error>Informe a data do documento</mat-error>
-      }
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Município</mat-label>
+        <input
+          matInput
+          formControlName="municipio"
+          [matAutocomplete]="autoMunicipio"
+          [placeholder]="carregandoMunicipios() ? 'Carregando cidades…' : ''"
+        />
+        @if (carregandoMunicipios()) {
+          <mat-spinner matSuffix diameter="18"></mat-spinner>
+        }
+        <mat-autocomplete #autoMunicipio="matAutocomplete">
+          @for (opcao of opcoesMunicipio; track opcao.id) {
+            <mat-option [value]="opcao.nome">{{ opcao.nome }}</mat-option>
+          }
+        </mat-autocomplete>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Data do Documento</mat-label>
+        <input
+          matInput
+          [matDatepicker]="pickerDoc"
+          formControlName="dataDocumento"
+          (keydown)="bloquearTeclasInvalidasNaData($event)"
+        />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
+        <mat-datepicker #pickerDoc>
+          <mat-datepicker-actions>
+            <button mat-button matDatepickerCancel>Cancelar</button>
+            <button mat-button type="button" (click)="definirDataDocumentoHoje(pickerDoc)">Hoje</button>
+            <button mat-flat-button color="primary" matDatepickerApply>Aplicar</button>
+          </mat-datepicker-actions>
+        </mat-datepicker>
+        @if (documentoForm.controls.dataDocumento.invalid && documentoForm.controls.dataDocumento.touched) {
+          <mat-error>Informe a data do documento</mat-error>
+        }
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Urgência</mat-label>
+        <mat-select formControlName="urgencia">
+          @for (opcao of urgencias; track opcao) {
+            <mat-option [value]="opcao">{{ urgenciaLabels[opcao] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
 
     <mat-form-field appearance="outline" class="po-field-full">
       <mat-label>Resumo / Observações</mat-label>

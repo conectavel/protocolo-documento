@@ -59,11 +59,43 @@
 .mat-mdc-raised-button,
 .mat-mdc-outlined-button,
 .mat-mdc-button {
-  height: 44px;
+  // Os tokens MDC de altura (--mdc-*-button-container-height) do tema do
+  // Material ganham do simples `height` abaixo em especificidade — sem
+  // resetá-los, botões com ícone (ex.: "Filtrar", "Limpar Filtros", "Aplicar
+  // período") ficavam mais altos que os campos de formulário ao lado.
+  --mdc-filled-button-container-height: 44px;
+  --mdc-outlined-button-container-height: 44px;
+  --mdc-text-button-container-height: 44px;
+  --mdc-protected-button-container-height: 44px;
+  height: 44px !important;
+  min-height: 44px;
   border-radius: var(--radius-sm);
 }
 
 .mat-mdc-form-field {
+  // Ícones dentro do campo (prefix/suffix, toggle do datepicker) ficam pretos
+  // no hover por padrão do Material (cor "on-surface") — deixa mais suave,
+  // igual ao resto do texto secundário da interface, inclusive no hover.
+  --mat-form-field-leading-icon-color: var(--color-text-secondary);
+  --mat-form-field-trailing-icon-color: var(--color-text-secondary);
+  --mat-form-field-hover-state-layer-opacity: 0;
+
+  .mat-mdc-form-field-icon-prefix > .mat-icon,
+  .mat-mdc-form-field-icon-suffix > .mat-icon,
+  .mat-datepicker-toggle .mat-mdc-icon-button .mat-icon {
+    color: var(--color-text-secondary);
+  }
+
+  &:hover {
+    --mat-form-field-trailing-icon-color: var(--color-text-secondary);
+
+    .mat-mdc-form-field-icon-prefix > .mat-icon,
+    .mat-mdc-form-field-icon-suffix > .mat-icon,
+    .mat-datepicker-toggle .mat-mdc-icon-button .mat-icon {
+      color: var(--color-text-secondary) !important;
+    }
+  }
+
   .mdc-notched-outline__leading {
     border-radius: var(--radius-sm) 0 0 var(--radius-sm);
   }
@@ -97,8 +129,34 @@ body,
 .shell-footer,
 .mat-mdc-form-field,
 .mat-mdc-select-panel,
-.mat-mdc-menu-panel {
+.mat-mdc-menu-panel,
+.mat-expansion-panel {
   transition: background-color 0.25s ease, border-color 0.25s ease, color 0.25s ease;
+}
+
+// O tema M2 do Material define seu próprio cinza para o painel de expansão
+// (usado no bloco "Filtros"), que não acompanha nosso token de superfície —
+// no modo escuro isso destoava dos demais cards (.po-card). Força o mesmo
+// --color-surface usado em todo o resto do app.
+.mat-expansion-panel,
+.mat-expansion-panel-header {
+  background: var(--color-surface) !important;
+  color: var(--color-text-primary);
+}
+
+.mat-expansion-panel-header-title,
+.mat-expansion-panel-header-description {
+  color: inherit;
+}
+
+// O título ("Filtros"/"Filtros Básicos") deve ficar branco (--color-surface)
+// tanto fechado quanto aberto — sem tom diferente de destaque no expandido.
+.mat-expansion-panel-header.mat-expanded {
+  background: var(--color-surface) !important;
+}
+
+.mat-expansion-panel-header:hover:not([aria-disabled='true']):not(.mat-expanded) {
+  background: var(--color-bg-page) !important;
 }
 
 html,
@@ -254,12 +312,267 @@ a {
   grid-column: 1 / -1;
 }
 
+// Linha "Nº do Documento / UF / Município / Data do Documento" (Protocolar Ofício
+// e Converter Pré-Protocolo): as 4 colunas do .po-grid ficariam todas do mesmo
+// tamanho, deixando UF (poucos caracteres) do mesmo tamanho que Nº do Documento/
+// Data — por isso este grid próprio, com Nº do Documento e Data maiores e UF/
+// Município menores, todos numa linha só.
+.po-grid-doc {
+  display: grid;
+  gap: var(--grid-gap);
+  grid-template-columns: 1.1fr 0.7fr 1.1fr 1.1fr 0.7fr;
+
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
+// Linha "Ação/Atividade / Disciplina / Nº do Documento / Id Documento / Período
+// início / Período fim / Urgência" do filtro avançado do Painel de Ofícios —
+// mesma técnica do .po-grid-doc (uma linha só, num grid próprio dentro do
+// .po-grid principal do formulário, sem afastar Parceiro/Regional/Tipo, que
+// ficam acima).
+.po-grid-filtros-avancados {
+  display: grid;
+  gap: var(--grid-gap);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+
+  @media (max-width: 1400px) {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(1, minmax(0, 1fr));
+  }
+}
+
 .po-nested-block {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-list-card);
   padding: 16px;
   margin-bottom: 16px;
   position: relative;
+}
+
+// -------------------------------------------------------------
+// Grid de cards compactos (Painel de Ofícios, Pré Protocolo) — global para
+// que qualquer lista de registros use o mesmo padrão visual de card.
+// -------------------------------------------------------------
+.po-cards-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 24px;
+  margin-bottom: var(--section-gap);
+
+  @media (max-width: 1280px) {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  @media (max-width: 960px) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+.po-list-card {
+  position: relative;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-list-card);
+  padding: 20px;
+  box-shadow: var(--shadow-card);
+  transition: box-shadow 0.2s ease, transform 0.2s ease, border-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+
+  // Ex.: ofício devolvido pela Assessoria, pré-protocolo sem anexo — o card
+  // ganha uma borda de alerta e um pontinho pulsante para não passar
+  // despercebido no meio dos outros registros da lista.
+  &--precisa-correcao {
+    border-color: var(--color-warn);
+  }
+
+  &__pulso-correcao {
+    position: absolute;
+    top: -6px;
+    right: -6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--color-warn);
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+    animation: po-pulso-correcao 1.6s ease-out infinite;
+  }
+
+  &:hover {
+    box-shadow: var(--shadow-card-hover);
+    transform: translateY(-2px);
+  }
+
+  &__header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__title-icon {
+    color: var(--color-accent);
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  &__title {
+    flex: 1;
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--color-text-primary);
+    white-space: normal;
+    overflow-wrap: break-word;
+    line-height: 1.3;
+    padding-top: 2px;
+  }
+
+  // Botão "Documento" no rodapé (junto de "Ver detalhe"/"Converter"), não um
+  // ícone solto perto do título — evita disputar espaço com o título e deixa
+  // claro que é uma ação, com rótulo, igual às ações ao lado.
+  &__pdf-btn {
+    color: var(--color-warn);
+    border-color: currentColor;
+
+    &--vazio {
+      color: var(--color-text-secondary);
+      opacity: 0.5;
+    }
+  }
+
+  &__badges {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+
+  &__numero-processo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: var(--radius-pill);
+    background: var(--color-accent-light, rgba(20, 83, 45, 0.12));
+    color: var(--color-primary);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
+  // flex-basis 100% força a linha (Sistema/E-mail [+ Urgência]) para uma linha
+  // própria abaixo do título, em vez de disputar largura com ele e quebrar o
+  // texto do título no meio da palavra.
+  &__origem-linha {
+    flex: 0 0 100%;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+
+  &__origem-email {
+    cursor: default;
+  }
+
+  &__menu {
+    display: flex;
+    flex-direction: column;
+    padding: 8px;
+    min-width: 180px;
+  }
+
+  &__menu-btn {
+    border-radius: var(--radius-pill);
+    color: #ffffff;
+    width: 100%;
+
+    &--ver {
+      background: var(--color-secondary-blue);
+    }
+  }
+
+  &__corpo {
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    margin: 4px 0 8px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+
+  &__row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    color: var(--color-text-primary);
+    margin-top: 6px;
+
+    mat-icon {
+      font-size: 20px;
+      width: 20px;
+      height: 20px;
+      flex-shrink: 0;
+    }
+
+    strong {
+      font-weight: 600;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    justify-content: space-between;
+    gap: 4px;
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid var(--color-border-light);
+  }
+
+  // Ação rápida (ex.: tramitação, conversão) — chama atenção quando é o
+  // próprio usuário quem precisa agir; vira indicador neutro/desabilitado
+  // quando o processo está com outro responsável, ou já foi concluído.
+  &__tramitar {
+    width: 100%;
+    margin-top: 8px;
+
+    &--info {
+      color: var(--color-text-secondary);
+      opacity: 0.75;
+    }
+  }
+}
+
+@keyframes po-pulso-correcao {
+  0% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 8px rgba(220, 38, 38, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+  }
 }
 
 .po-inline-create {
@@ -397,6 +710,11 @@ a {
   &--info {
     background: var(--chip-info-bg);
     color: var(--chip-info-text);
+  }
+
+  &--purple {
+    background: var(--chip-purple-bg);
+    color: var(--chip-purple-text);
   }
 }
 

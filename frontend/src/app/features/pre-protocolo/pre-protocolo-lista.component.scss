@@ -1,3 +1,8 @@
+.pre-protocolo-link-publico {
+  align-self: flex-start;
+  margin-top: 4px;
+}
+
 .po-tabs {
   display: flex;
   gap: 8px;
@@ -67,37 +72,22 @@
   margin-top: var(--section-gap);
 }
 
-.pre-protocolo-card {
-  margin-bottom: var(--grid-gap);
+// O card em si agora reaproveita .po-list-card (estilo global, compartilhado
+// com o Painel de Ofícios) — só o bloco de "sem anexo" é específico daqui.
+.pre-protocolo-card__sem-anexo {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  background: var(--color-bg-page);
+  border: 1px dashed var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin-top: 8px;
 
-  .po-card-section-title {
+  mat-radio-group {
     display: flex;
-    align-items: center;
-    gap: 8px;
+    gap: 20px;
     flex-wrap: wrap;
-  }
-
-  &__topo {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 16px;
-    flex-wrap: wrap;
-  }
-
-  &__acoes {
-    display: flex;
-    gap: 8px;
-    flex-shrink: 0;
-  }
-
-  &__corpo {
-    font-size: 14px;
-    color: var(--color-text-secondary);
-    background: var(--color-bg-page);
-    border-radius: var(--radius-sm);
-    padding: 12px 14px;
-    margin-bottom: 16px;
-    white-space: pre-wrap;
   }
 }

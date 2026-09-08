@@ -35,6 +35,12 @@ export class SolicitacoesController {
     return this.solicitacoesService.metricas(usuario, filtros);
   }
 
+  /** Contadores para os selos das abas do Painel de Ofícios ("Meus Pendentes" + total por status). */
+  @Get('contadores')
+  contadores(@UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.solicitacoesService.contadores(usuario);
+  }
+
   @Get(':id')
   buscarPorId(@Param('id') id: string, @UsuarioAtual() usuario: UsuarioAutenticado) {
     return this.solicitacoesService.buscarPorId(id, usuario);

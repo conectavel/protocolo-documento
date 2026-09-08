@@ -5,6 +5,8 @@ export interface MetricasFiltro {
   dataFim?: string;
   parceiroId?: string;
   regionalId?: string;
+  mobilizadorId?: string;
+  tipoSolicitacao?: string;
 }
 
 export interface MetricaPorStatus {

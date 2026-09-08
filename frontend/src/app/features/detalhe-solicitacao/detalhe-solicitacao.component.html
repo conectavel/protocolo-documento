@@ -30,6 +30,20 @@
       </div>
     }
 
+    <div class="po-origem-chip-linha">
+      @if (sol.emailRemetenteOrigem) {
+        <span class="po-chip po-chip--info" [matTooltip]="'Recebido por e-mail de ' + sol.emailRemetenteOrigem">
+          <mat-icon>mark_email_unread</mat-icon>
+          Origem: E-mail
+        </span>
+      } @else {
+        <span class="po-chip po-chip--neutral" matTooltip="Protocolado diretamente no sistema">
+          <mat-icon>computer</mat-icon>
+          Origem: Sistema
+        </span>
+      }
+    </div>
+
     @if (sol.emailRemetenteOrigem) {
       <div class="po-origem-email-banner">
         <div class="po-origem-email-banner__texto">
@@ -202,6 +216,10 @@
 
         @if (podeAnalisarAssessoria()) {
           <p class="po-hint">Analise a solicitação e escolha uma decisão.</p>
+          <button mat-stroked-button type="button" class="po-assinar-btn" (click)="abrirAssinatura()">
+            <mat-icon>{{ assinaturaPendente() ? 'task_alt' : 'draw' }}</mat-icon>
+            {{ assinaturaPendente() ? 'Assinatura anexada — trocar' : 'Assinar esta decisão (opcional)' }}
+          </button>
           <div class="po-acoes-linha po-acoes-linha--destaque">
             <button mat-stroked-button color="warn" [disabled]="executandoAcao()" (click)="recusarAssessoria()">
               <mat-icon>close</mat-icon>
@@ -223,16 +241,22 @@
             Escolha os Diretores responsáveis por esta solicitação — cada um poderá, depois,
             direcionar os itens do time dele para a Área/Programa correta.
           </p>
-          <form [formGroup]="despacharForm" class="po-mt-16">
-            <mat-form-field appearance="outline" class="po-field-full">
+          <form [formGroup]="despacharForm" class="po-mt-16 po-diretores-form">
+            <mat-form-field appearance="outline" class="po-field-full po-diretores-select">
               <mat-label>Diretores responsáveis</mat-label>
               <mat-select formControlName="diretoresIds" multiple>
                 @for (diretor of diretores(); track diretor.id) {
-                  <mat-option [value]="diretor.id">{{ diretor.nome }}</mat-option>
+                  <mat-option [value]="diretor.id"
+                    >{{ diretor.nome }} — {{ diretor.departamento || 'Ainda não desenhado para o departamento' }}</mat-option
+                  >
                 }
               </mat-select>
             </mat-form-field>
           </form>
+          <button mat-stroked-button type="button" class="po-assinar-btn po-mt-16" (click)="abrirAssinatura()">
+            <mat-icon>{{ assinaturaPendente() ? 'task_alt' : 'draw' }}</mat-icon>
+            {{ assinaturaPendente() ? 'Assinatura anexada — trocar' : 'Assinar esta decisão (opcional)' }}
+          </button>
           <button
             mat-flat-button
             color="primary"
@@ -616,6 +640,23 @@
                     </span>
                     @if (tramitacao.motivo) {
                       <p>{{ tramitacao.motivo }}</p>
+                    }
+                    @if (tramitacao.assinatura; as assinatura) {
+                      <div class="po-assinatura-selo">
+                        @if (assinatura.tipo === 'ELETRONICA_SIMPLES') {
+                          <mat-icon>draw</mat-icon>
+                          <span>Assinado eletronicamente</span>
+                          @if (assinatura.imagemAssinatura) {
+                            <img [src]="assinatura.imagemAssinatura" alt="Assinatura" class="po-assinatura-selo__img" />
+                          }
+                        } @else {
+                          <mat-icon>badge</mat-icon>
+                          <span>
+                            Certificado digital (simulado) — {{ assinatura.titularCertificado }}
+                            <span class="po-assinatura-selo__aviso">{{ assinatura.avisoValidade }}</span>
+                          </span>
+                        }
+                      </div>
                     }
                   </div>
                 </div>

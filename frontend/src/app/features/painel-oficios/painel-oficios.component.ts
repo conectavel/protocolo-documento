@@ -21,6 +21,7 @@ import { SolicitacoesService } from '../../core/services/solicitacoes.service';
 import {
   AbaPainel,
   AreaPrograma,
+  Contadores,
   CoordenadorRegional,
   PAPEIS_PARCEIRO,
   Parceiro,
@@ -29,7 +30,10 @@ import {
   StatusMacro,
   TIPO_ITEM_LABELS,
   TipoItem,
+  URGENCIA_LABELS,
+  Urgencia,
   abaDoStatusMacro,
+  chipTomUrgencia,
 } from '../../core/models';
 import { StatusChipComponent } from '../../shared/components/status-chip/status-chip.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
@@ -42,6 +46,7 @@ interface AbaConfig {
 }
 
 const ABAS: AbaConfig[] = [
+  { chave: 'MEUS_PENDENTES', rotulo: 'Meus Pendentes' },
   { chave: 'INICIADOS', rotulo: 'Iniciados' },
   { chave: 'DESPACHO', rotulo: 'Despacho', somenteInterno: true },
   { chave: 'ATENDIDOS', rotulo: 'Atendidos' },
@@ -49,6 +54,16 @@ const ABAS: AbaConfig[] = [
   { chave: 'NAO_ATENDIDOS', rotulo: 'Não Atendidos' },
   { chave: 'CANCELADOS', rotulo: 'Cancelados' },
 ];
+
+/** Quais StatusMacro somam no selo de cada aba — espelha abaDoStatusMacro(), na direção inversa. */
+const STATUS_POR_ABA: Partial<Record<AbaPainel, StatusMacro[]>> = {
+  INICIADOS: ['EM_ANALISE_REGIONAL', 'EM_ANALISE_ASSESSORIA', 'DEVOLVIDO_AJUSTE', 'EM_EXECUCAO'],
+  DESPACHO: ['EM_DESPACHO'],
+  ATENDIDOS: ['ATENDIDO'],
+  PARCIALMENTE: ['PARCIALMENTE_ATENDIDO'],
+  NAO_ATENDIDOS: ['NAO_ATENDIDO'],
+  CANCELADOS: ['CANCELADO'],
+};
 
 /** Status em que a solicitação ainda está "em tramitação" — faz sentido mostrar o botão. */
 const STATUS_EM_ANDAMENTO: StatusMacro[] = [
@@ -108,8 +123,9 @@ export class PainelOficiosComponent implements OnInit {
   readonly page = signal(1);
   readonly pageSize = signal(10);
   readonly modoTabela = signal(false);
-  readonly abaAtiva = signal<AbaPainel>('INICIADOS');
+  readonly abaAtiva = signal<AbaPainel>('MEUS_PENDENTES');
   readonly busca = signal('');
+  readonly contadores = signal<Contadores | null>(null);
 
   readonly parceiros = signal<Parceiro[]>([]);
   readonly regionais = signal<CoordenadorRegional[]>([]);
@@ -121,13 +137,29 @@ export class PainelOficiosComponent implements OnInit {
     const papel = this.papel();
     return !!papel && PAPEIS_PARCEIRO.includes(papel);
   });
+  // Assessor tem autonomia para protocolar diretamente em nome de um Parceiro —
+  // útil quando o ofício chega em mãos, não por e-mail (não passa pelo Pré Protocolo).
+  readonly ehAssessor = computed(() => this.papel() === 'ASSESSOR');
   readonly abasVisiveis = computed(() =>
     ABAS.filter((aba) => !aba.somenteInterno || !this.ehMobilizador())
   );
 
-  readonly solicitacoesDaAba = computed(() =>
-    this.solicitacoes().filter((s) => abaDoStatusMacro(s.statusMacro) === this.abaAtiva())
-  );
+  readonly solicitacoesDaAba = computed(() => {
+    const aba = this.abaAtiva();
+    if (aba === 'MEUS_PENDENTES') {
+      return this.solicitacoes().filter((s) => this.podeTramitar(s));
+    }
+    return this.solicitacoes().filter((s) => abaDoStatusMacro(s.statusMacro) === aba);
+  });
+
+  /** Total do selo de cada aba — "Meus Pendentes" vem de contadores().meusPendentes; as demais somam por StatusMacro. */
+  contadorDaAba(aba: AbaPainel): number {
+    const c = this.contadores();
+    if (!c) return 0;
+    if (aba === 'MEUS_PENDENTES') return c.meusPendentes;
+    const statusList = STATUS_POR_ABA[aba] ?? [];
+    return statusList.reduce((soma, status) => soma + (c.porStatus[status] ?? 0), 0);
+  }
 
   // Busca livre: filtra pelos mesmos campos exibidos no card/tabela (título,
   // documento, parceiro, município, mobilizador, status) — client-side sobre a
@@ -158,13 +190,33 @@ export class PainelOficiosComponent implements OnInit {
     acaoAtividade: [''],
     disciplina: [''],
     numeroDocumento: [''],
+    numeroProcesso: [''],
+    urgencia: [''],
     dataInicio: [null as Date | null],
     dataFim: [null as Date | null],
   });
 
+  readonly urgencias: Urgencia[] = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE'];
+  readonly urgenciaLabels = URGENCIA_LABELS;
+  readonly chipTomUrgencia = chipTomUrgencia;
+
+  /** Chip de urgência clicável junto do paginador — atalho para o mesmo filtro do painel acima. */
+  selecionarUrgencia(urgencia: Urgencia | ''): void {
+    this.filtros.controls.urgencia.setValue(urgencia);
+    this.filtrar();
+  }
+
   ngOnInit(): void {
     this.carregarFiltrosAuxiliares();
+    this.carregarContadores();
     this.carregar();
+  }
+
+  private carregarContadores(): void {
+    this.solicitacoesService.contadores().subscribe({
+      next: (c) => this.contadores.set(c),
+      error: () => this.contadores.set(null),
+    });
   }
 
   carregarFiltrosAuxiliares(): void {
@@ -200,6 +252,8 @@ export class PainelOficiosComponent implements OnInit {
         acaoAtividade: valores.acaoAtividade || undefined,
         disciplina: valores.disciplina || undefined,
         numeroDocumento: valores.numeroDocumento || undefined,
+        numeroProcesso: valores.numeroProcesso || undefined,
+        urgencia: (valores.urgencia as Urgencia) || undefined,
         dataInicio: valores.dataInicio ? valores.dataInicio.toISOString() : undefined,
         dataFim: valores.dataFim ? valores.dataFim.toISOString() : undefined,
         page: this.page(),
@@ -232,6 +286,8 @@ export class PainelOficiosComponent implements OnInit {
       acaoAtividade: '',
       disciplina: '',
       numeroDocumento: '',
+      numeroProcesso: '',
+      urgencia: '',
       dataInicio: null,
       dataFim: null,
     });

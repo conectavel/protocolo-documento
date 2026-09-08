@@ -36,6 +36,7 @@
             <th>Substituto</th>
             <th>Período</th>
             <th>Escopo</th>
+            <th>Motivo</th>
             <th>Situação</th>
             <th class="po-table__acoes">Ações</th>
           </tr>
@@ -47,18 +48,30 @@
               <td>{{ s.usuarioSubstitutoNome }}</td>
               <td>{{ s.dataInicio | date: 'dd/MM/yyyy' }} – {{ s.dataFim | date: 'dd/MM/yyyy' }}</td>
               <td>{{ s.substituirTodosProcessos ? 'Todos os processos' : 'Processos selecionados' }}</td>
+              <td>{{ s.justificativa || '—' }}</td>
               <td>
-                <span class="po-chip" [class.po-chip--success]="s.vigente" [class.po-chip--neutral]="!s.vigente">
-                  {{ s.vigente ? 'Vigente' : 'Fora do período' }}
-                </span>
+                @if (s.vigente) {
+                  <span class="po-chip po-chip--success">Vigente</span>
+                } @else if (s.encerradaAntecipadamente) {
+                  <span
+                    class="po-chip po-chip--warning"
+                    [matTooltip]="'Encerrada em ' + (s.encerradoEm | date: 'dd/MM/yyyy HH:mm') + (s.encerradoPorNome ? ' por ' + s.encerradoPorNome : '')"
+                  >
+                    Encerrada antecipadamente
+                  </span>
+                } @else {
+                  <span class="po-chip po-chip--neutral">Fora do período</span>
+                }
               </td>
               <td class="po-table__acoes">
                 <button mat-icon-button matTooltip="Editar" (click)="editar(s)">
                   <mat-icon>edit</mat-icon>
                 </button>
-                <button mat-icon-button matTooltip="Remover" (click)="remover(s)">
-                  <mat-icon>delete</mat-icon>
-                </button>
+                @if (s.vigente) {
+                  <button mat-icon-button matTooltip="Encerrar antecipadamente" (click)="encerrar(s)">
+                    <mat-icon>event_busy</mat-icon>
+                  </button>
+                }
               </td>
             </tr>
           }

@@ -24,6 +24,10 @@
   }
 }
 
+.po-origem-chip-linha {
+  margin-bottom: 12px;
+}
+
 .po-origem-email-banner {
   display: flex;
   align-items: center;
@@ -756,6 +760,55 @@
   font-weight: 700;
   letter-spacing: 0.02em;
   animation: po-item-enter 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+// O <form> de "Diretores responsáveis" não é um .po-grid — sem isso o
+// mat-form-field encolhe para o conteúdo (ficava um select minúsculo).
+.po-diretores-form {
+  display: flex;
+}
+
+.po-diretores-select {
+  width: 100%;
+}
+
+.po-assinar-btn {
+  display: flex;
+  align-self: flex-start;
+  margin-bottom: 8px;
+  color: var(--color-accent);
+  border-color: var(--color-accent);
+}
+
+.po-assinatura-selo {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--color-text-secondary);
+
+  .mat-icon {
+    font-size: 16px;
+    width: 16px;
+    height: 16px;
+    color: var(--color-accent);
+    flex-shrink: 0;
+  }
+
+  &__img {
+    height: 32px;
+    border: 1px solid var(--color-border);
+    border-radius: 4px;
+    background: #ffffff;
+  }
+
+  &__aviso {
+    display: block;
+    color: var(--color-warn);
+    font-size: 11px;
+    margin-top: 2px;
+  }
 }
 
 .po-historico-item {

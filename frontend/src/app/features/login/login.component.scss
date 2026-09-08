@@ -180,6 +180,27 @@
     box-shadow: 0 6px 16px rgba(15, 92, 77, 0.28);
   }
 
+  &__link-publico {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    margin-top: 18px;
+    font-size: 13px;
+    color: var(--color-text-secondary);
+    text-decoration: none;
+
+    &:hover {
+      color: var(--color-primary);
+    }
+
+    .mat-icon {
+      font-size: 16px;
+      width: 16px;
+      height: 16px;
+    }
+  }
+
   &__debug {
     margin-top: 24px;
     padding-top: 20px;

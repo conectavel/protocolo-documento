@@ -18,9 +18,11 @@ import { AuthService } from '../../core/services/auth.service';
 import { AnexosService } from '../../core/services/anexos.service';
 import { ParceirosService } from '../../core/services/parceiros.service';
 import { SolicitacoesService } from '../../core/services/solicitacoes.service';
-import { ItemSolicitacao, Parceiro, TIPO_ITEM_LABELS, TipoItem } from '../../core/models';
+import { MunicipiosService } from '../../core/services/municipios.service';
+import { ItemSolicitacao, Municipio, Parceiro, TIPO_ITEM_LABELS, TipoItem, URGENCIA_LABELS, Urgencia } from '../../core/models';
 import { PdfViewerComponent } from '../../shared/components/pdf-viewer/pdf-viewer.component';
 import { CATALOGO_TIPOS_EVENTO } from '../../core/catalogos/catalogo-tipos-evento';
+import { CATALOGO_UF } from '../../core/catalogos/catalogo-uf';
 import {
   ConfirmarAcaoDialogComponent,
 } from '../../shared/components/confirmar-acao-dialog/confirmar-acao-dialog.component';
@@ -64,6 +66,7 @@ export class ProtocolarOficioComponent implements OnInit {
   private readonly anexosService = inject(AnexosService);
   private readonly parceirosService = inject(ParceirosService);
   private readonly solicitacoesService = inject(SolicitacoesService);
+  private readonly municipiosService = inject(MunicipiosService);
   private readonly router = inject(Router);
   private readonly dialog = inject(MatDialog);
   private readonly alerta = inject(AlertaService);
@@ -108,12 +111,27 @@ export class ProtocolarOficioComponent implements OnInit {
   readonly salvando = signal(false);
   readonly erroSalvar = signal<string | null>(null);
 
+  /**
+   * UF vem pré-selecionada como Goiás — todo Sindicato Rural neste sistema é do
+   * SENAR-GO/FAEG, então este é sempre o valor esperado — mas continua editável
+   * (o campo Município recarrega com as cidades da UF escolhida, valendo para
+   * qualquer estado, não só Goiás).
+   */
+  readonly ufs = CATALOGO_UF;
+  readonly municipios = signal<Municipio[]>([]);
+  readonly carregandoMunicipios = signal(false);
+
+  readonly urgencias: Urgencia[] = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE'];
+  readonly urgenciaLabels = URGENCIA_LABELS;
+
   readonly documentoForm = this.fb.nonNullable.group({
     assunto: ['', Validators.required],
     numeroDocumento: [''],
     dataDocumento: [null as Date | null, Validators.required],
+    uf: ['GO', Validators.required],
     municipio: [''],
     resumoObservacoes: [''],
+    urgencia: ['NORMAL' as Urgencia],
     // Só usado quando quem está logado é o Presidente do Sindicato — o
     // Mobilizador sempre protocola como ele mesmo (usuario.mobilizadorId).
     // 1 Parceiro tem 1 ou mais Mobilizadores, então o Presidente precisa
@@ -150,6 +168,35 @@ export class ProtocolarOficioComponent implements OnInit {
     this.itemForm.controls.tipoEvento.valueChanges.subscribe(() => {
       this.itemForm.controls.acaoAtividade.setValue('');
     });
+
+    this.carregarMunicipios(this.documentoForm.controls.uf.value);
+    this.documentoForm.controls.uf.valueChanges.subscribe((uf) => {
+      this.documentoForm.controls.municipio.setValue('');
+      this.carregarMunicipios(uf);
+    });
+  }
+
+  private carregarMunicipios(uf: string): void {
+    this.carregandoMunicipios.set(true);
+    this.municipiosService.porUf(uf).subscribe({
+      next: (lista) => {
+        this.municipios.set(lista);
+        this.carregandoMunicipios.set(false);
+      },
+      error: () => {
+        this.municipios.set([]);
+        this.carregandoMunicipios.set(false);
+      },
+    });
+  }
+
+  /** Opções de Município da UF selecionada, filtradas pelo texto digitado. */
+  get opcoesMunicipio(): Municipio[] {
+    const filtro = (this.documentoForm.controls.municipio.value || '').trim().toLowerCase();
+    const lista = filtro
+      ? this.municipios().filter((m) => m.nome.toLowerCase().includes(filtro))
+      : this.municipios();
+    return lista.slice(0, LIMITE_OPCOES_AUTOCOMPLETE);
   }
 
   get tipoAtualTemTitulo(): boolean {
@@ -587,6 +634,7 @@ export class ProtocolarOficioComponent implements OnInit {
           : new Date().toISOString(),
         municipio: valoresDocumento.municipio || undefined,
         resumoObservacoes: valoresDocumento.resumoObservacoes || undefined,
+        urgencia: valoresDocumento.urgencia,
         anexoOficioId: this.anexoId() as string,
         itens: this.itens(),
       })

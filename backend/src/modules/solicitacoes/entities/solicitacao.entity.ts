@@ -8,7 +8,7 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { StatusMacro } from '../../../common/enums/solicitacao.enum';
+import { StatusMacro, Urgencia } from '../../../common/enums/solicitacao.enum';
 import { Parceiro } from '../../parceiros/entities/parceiro.entity';
 import { Mobilizador } from '../../parceiros/entities/mobilizador.entity';
 import { ItemSolicitacao } from './item-solicitacao.entity';
@@ -61,6 +61,14 @@ export class Solicitacao {
 
   @Column({ type: 'text', nullable: true })
   observacao: string;
+
+  /** Classificação de urgência — livre, só para priorizar visualmente/filtrar; não altera o fluxo/SLA. Toda solicitação nasce NORMAL. */
+  @Column({
+    type: 'enum',
+    enum: Urgencia,
+    default: Urgencia.NORMAL,
+  })
+  urgencia: Urgencia;
 
   @Column({ name: 'data_documento', type: 'date' })
   dataDocumento: string;

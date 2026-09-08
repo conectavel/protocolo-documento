@@ -1,9 +1,10 @@
 import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Between, Brackets, Repository } from 'typeorm';
+import { Between, Brackets, In, Repository } from 'typeorm';
 import { Solicitacao } from './entities/solicitacao.entity';
 import { ItemSolicitacao } from './entities/item-solicitacao.entity';
 import { Tramitacao } from './entities/tramitacao.entity';
+import { AssinaturaDigital } from './entities/assinatura-digital.entity';
 import { AreaPrograma } from '../parceiros/entities/area-programa.entity';
 import { Parceiro } from '../parceiros/entities/parceiro.entity';
 import { Mobilizador } from '../parceiros/entities/mobilizador.entity';
@@ -40,6 +41,7 @@ export class SolicitacoesService {
     @InjectRepository(Solicitacao) private readonly solicitacaoRepo: Repository<Solicitacao>,
     @InjectRepository(ItemSolicitacao) private readonly itemRepo: Repository<ItemSolicitacao>,
     @InjectRepository(Tramitacao) private readonly tramitacaoRepo: Repository<Tramitacao>,
+    @InjectRepository(AssinaturaDigital) private readonly assinaturaRepo: Repository<AssinaturaDigital>,
     @InjectRepository(AreaPrograma) private readonly areaProgramaRepo: Repository<AreaPrograma>,
     @InjectRepository(Parceiro) private readonly parceiroRepo: Repository<Parceiro>,
     @InjectRepository(Mobilizador) private readonly mobilizadorRepo: Repository<Mobilizador>,
@@ -82,6 +84,7 @@ export class SolicitacoesService {
       numeroProcesso: await this.gerarNumeroProcesso(agora),
       dataDocumento: dto.dataDocumento,
       observacao: dto.resumoObservacoes,
+      urgencia: dto.urgencia,
       anexoOficioId: dto.anexoOficioId,
       dataSolicitacao: agora,
       prazoCienciaRegional: new Date(agora.getTime() + 24 * 60 * 60 * 1000),
@@ -128,9 +131,12 @@ export class SolicitacoesService {
     this.aplicarEscopoPorPapel(qb, usuario);
 
     if (filtros.status) qb.andWhere('s.statusMacro = :status', { status: filtros.status });
+    if (filtros.urgencia) qb.andWhere('s.urgencia = :urgencia', { urgencia: filtros.urgencia });
     if (filtros.parceiroId) qb.andWhere('s.parceiroId = :parceiroId', { parceiroId: filtros.parceiroId });
     if (filtros.numeroDocumento)
       qb.andWhere('s.numeroDocumento ILIKE :doc', { doc: `%${filtros.numeroDocumento}%` });
+    if (filtros.numeroProcesso)
+      qb.andWhere('s.numeroProcesso ILIKE :proc', { proc: `%${filtros.numeroProcesso}%` });
     if (filtros.dataInicio) qb.andWhere('s.dataDocumento >= :di', { di: filtros.dataInicio });
     if (filtros.dataFim) qb.andWhere('s.dataDocumento <= :df', { df: filtros.dataFim });
     if (filtros.acaoAtividade)
@@ -149,6 +155,95 @@ export class SolicitacoesService {
       page,
       pageSize,
     };
+  }
+
+  /**
+   * Contadores para os selos de cada aba do Painel de Ofícios: total por
+   * StatusMacro (o frontend agrupa em aba via `abaDoStatusMacro`) e
+   * "Meus Pendentes" — quantas solicitações/itens esperam uma ação deste
+   * usuário especificamente, espelhando exatamente a mesma regra de
+   * `podeTramitar()` do painel (ver painel-oficios.component.ts), por papel.
+   */
+  async contadores(usuario: UsuarioAutenticado) {
+    // `aplicarEscopoPorPapel` referencia o alias `itens` para Gestor/Coordenador
+    // (escopo por Área/Programa) — precisa existir mesmo aqui, onde não usamos
+    // os itens para nada além de satisfazer esse join.
+    const qbStatus = this.solicitacaoRepo
+      .createQueryBuilder('s')
+      .leftJoin('s.parceiro', 'parceiro')
+      .leftJoin('s.itens', 'itens');
+    this.aplicarEscopoPorPapel(qbStatus, usuario);
+    const porStatusBruto = await qbStatus
+      .select('s.statusMacro', 'status')
+      .addSelect('COUNT(DISTINCT s.id)', 'total')
+      .groupBy('s.statusMacro')
+      .getRawMany<{ status: StatusMacro; total: string }>();
+
+    const porStatus: Record<string, number> = {};
+    for (const linha of porStatusBruto) {
+      porStatus[linha.status] = Number(linha.total);
+    }
+
+    return { porStatus, meusPendentes: await this.contarMeusPendentes(usuario) };
+  }
+
+  private async contarMeusPendentes(usuario: UsuarioAutenticado): Promise<number> {
+    switch (usuario.papel) {
+      case Papel.COORDENADOR_REGIONAL: {
+        const qb = this.solicitacaoRepo.createQueryBuilder('s').leftJoin('s.parceiro', 'parceiro');
+        this.aplicarEscopoPorPapel(qb, usuario);
+        qb.andWhere('s.statusMacro = :status', { status: StatusMacro.EM_ANALISE_REGIONAL });
+        return qb.getCount();
+      }
+      case Papel.ASSESSOR: {
+        const qb = this.solicitacaoRepo.createQueryBuilder('s').leftJoin('s.parceiro', 'parceiro');
+        this.aplicarEscopoPorPapel(qb, usuario);
+        qb.andWhere('s.statusMacro = :status', { status: StatusMacro.EM_ANALISE_ASSESSORIA });
+        return qb.getCount();
+      }
+      case Papel.SUPERINTENDENTE:
+      case Papel.DIRETOR_EDUCACIONAL: {
+        const qb = this.solicitacaoRepo.createQueryBuilder('s').leftJoin('s.parceiro', 'parceiro');
+        this.aplicarEscopoPorPapel(qb, usuario);
+        qb.andWhere('s.statusMacro = :status', { status: StatusMacro.EM_DESPACHO });
+        return qb.getCount();
+      }
+      case Papel.GESTOR: {
+        const qb = this.solicitacaoRepo
+          .createQueryBuilder('s')
+          .leftJoin('s.parceiro', 'parceiro')
+          .innerJoin('s.itens', 'itens')
+          .leftJoin('itens.devolutiva', 'devolutiva');
+        this.aplicarEscopoPorPapel(qb, usuario);
+        qb.andWhere('itens.areaProgramaId = :areaId', { areaId: usuario.areaProgramaId })
+          .andWhere('itens.coordenadorResponsavelId IS NULL')
+          .andWhere('devolutiva.id IS NULL');
+        const resultado = await qb.select('COUNT(DISTINCT s.id)', 'total').getRawOne<{ total: string }>();
+        return Number(resultado?.total ?? 0);
+      }
+      case Papel.COORDENADOR: {
+        const qb = this.solicitacaoRepo
+          .createQueryBuilder('s')
+          .leftJoin('s.parceiro', 'parceiro')
+          .innerJoin('s.itens', 'itens')
+          .leftJoin('itens.devolutiva', 'devolutiva');
+        this.aplicarEscopoPorPapel(qb, usuario);
+        qb.andWhere('itens.coordenadorResponsavelId = :uid', { uid: usuario.id }).andWhere(
+          'devolutiva.id IS NULL',
+        );
+        const resultado = await qb.select('COUNT(DISTINCT s.id)', 'total').getRawOne<{ total: string }>();
+        return Number(resultado?.total ?? 0);
+      }
+      case Papel.MOBILIZADOR:
+      case Papel.PRESIDENTE: {
+        const qb = this.solicitacaoRepo.createQueryBuilder('s').leftJoin('s.parceiro', 'parceiro');
+        this.aplicarEscopoPorPapel(qb, usuario);
+        qb.andWhere('s.statusMacro = :status', { status: StatusMacro.DEVOLVIDO_AJUSTE });
+        return qb.getCount();
+      }
+      default:
+        return 0;
+    }
   }
 
   async buscarPorId(id: string, usuario: UsuarioAutenticado) {
@@ -180,16 +275,35 @@ export class SolicitacoesService {
       where: { solicitacaoId: id },
       order: { criadoEm: 'ASC' },
     });
-    return tramitacoes.map((t) => ({
-      id: t.id,
-      de: t.deEtapa,
-      para: t.paraEtapa,
-      acao: t.acao,
-      motivo: t.motivo,
-      responsavelNome: t.usuarioNome,
-      responsavelPapel: t.usuarioPapel,
-      criadoEm: t.criadoEm,
-    }));
+    const assinaturas = tramitacoes.length
+      ? await this.assinaturaRepo.find({ where: { tramitacaoId: In(tramitacoes.map((t) => t.id)) } })
+      : [];
+    const assinaturaPorTramitacao = new Map(assinaturas.map((a) => [a.tramitacaoId, a]));
+
+    return tramitacoes.map((t) => {
+      const assinatura = assinaturaPorTramitacao.get(t.id);
+      return {
+        id: t.id,
+        de: t.deEtapa,
+        para: t.paraEtapa,
+        acao: t.acao,
+        motivo: t.motivo,
+        responsavelNome: t.usuarioNome,
+        responsavelPapel: t.usuarioPapel,
+        criadoEm: t.criadoEm,
+        assinatura: assinatura
+          ? {
+              tipo: assinatura.tipo,
+              imagemAssinatura: assinatura.imagemAssinatura,
+              certificadoNomeArquivo: assinatura.certificadoNomeArquivo,
+              titularCertificado: assinatura.titularCertificado,
+              validada: assinatura.validada,
+              avisoValidade: assinatura.avisoValidade,
+              assinadoEm: assinatura.assinadoEm,
+            }
+          : null,
+      };
+    });
   }
 
   /**
@@ -245,6 +359,10 @@ export class SolicitacoesService {
       if (filtros.parceiroId) qb.andWhere('s.parceiroId = :parceiroId', { parceiroId: filtros.parceiroId });
       if (filtros.regionalId)
         qb.andWhere('parceiro.coordenadorRegionalId = :regionalId', { regionalId: filtros.regionalId });
+      if (filtros.mobilizadorId)
+        qb.andWhere('s.mobilizadorId = :mobilizadorId', { mobilizadorId: filtros.mobilizadorId });
+      if (filtros.tipoSolicitacao)
+        qb.andWhere('itens.tipo = :tipoSolicitacao', { tipoSolicitacao: filtros.tipoSolicitacao });
       return qb;
     };
 
@@ -471,7 +589,7 @@ export class SolicitacoesService {
   async analisarAssessoria(id: string, usuario: UsuarioAutenticado, dto: AnaliseAssessoriaDto) {
     this.exigirPapel(usuario, [Papel.ASSESSOR, Papel.ADMIN]);
     const solicitacao = await this.buscarSolicitacaoOuFalhar(id);
-    await this.stateMachine.analisarAssessoria(solicitacao, usuario, dto.decisao, dto.motivo);
+    await this.stateMachine.analisarAssessoria(solicitacao, usuario, dto.decisao, dto.motivo, dto.assinatura);
     if (dto.decisao === 'APROVAR') {
       await this.excluirItensDoFluxo(solicitacao, usuario, dto.itensExcluidos);
     }
@@ -494,6 +612,7 @@ export class SolicitacoesService {
       usuario,
       dto.diretoriaDestino,
       dto.diretoresIds,
+      dto.assinatura,
     );
     await this.excluirItensDoFluxo(solicitacao, usuario, dto.itensExcluidos);
     return this.buscarPorId(id, usuario);

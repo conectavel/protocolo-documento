@@ -3,6 +3,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Solicitacao } from './entities/solicitacao.entity';
 import { ItemSolicitacao } from './entities/item-solicitacao.entity';
 import { Tramitacao } from './entities/tramitacao.entity';
+import { AssinaturaDigital } from './entities/assinatura-digital.entity';
 import { Devolutiva } from '../devolutivas/entities/devolutiva.entity';
 import { AreaPrograma } from '../parceiros/entities/area-programa.entity';
 import { Parceiro } from '../parceiros/entities/parceiro.entity';
@@ -16,7 +17,16 @@ import { VerificarCienciaRegionalJob } from './jobs/verificar-ciencia-regional.j
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([Solicitacao, ItemSolicitacao, Tramitacao, Devolutiva, AreaPrograma, Parceiro, Mobilizador]),
+    TypeOrmModule.forFeature([
+      Solicitacao,
+      ItemSolicitacao,
+      Tramitacao,
+      AssinaturaDigital,
+      Devolutiva,
+      AreaPrograma,
+      Parceiro,
+      Mobilizador,
+    ]),
     AnexosModule,
     NotificacoesModule,
   ],

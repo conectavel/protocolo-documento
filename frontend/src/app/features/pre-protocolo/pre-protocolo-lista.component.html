@@ -1,12 +1,23 @@
 <div class="po-page-header">
   <h1 class="po-page-title">
     <mat-icon>mark_email_unread</mat-icon>
-    Pré Protocolo
+    Pré-Protocolo
   </h1>
   <p class="po-page-subtitle">
     <mat-icon>info</mat-icon>
     Ofícios recebidos por e-mail (superintendencia&#64;senar-go.com.br) aguardando revisão antes de virar protocolo.
   </p>
+  <button
+    mat-stroked-button
+    color="primary"
+    type="button"
+    class="pre-protocolo-link-publico"
+    matTooltip="Copia o link do formulário público — envie para quem precisa mandar uma solicitação sem ter conta no sistema"
+    (click)="copiarLinkPublico()"
+  >
+    <mat-icon>link</mat-icon>
+    Copiar link para envio sem login
+  </button>
 </div>
 
 <div class="po-tabs">
@@ -84,44 +95,128 @@
     [mensagem]="abaAtiva() === 'ENTRADA' ? 'Nenhum e-mail encontrado com esses filtros' : 'Nenhum protocolo iniciado a partir de e-mail encontrado'"
   ></app-empty-state>
 } @else {
-  @for (registro of registros(); track registro.id) {
-    <div class="po-card pre-protocolo-card">
-      <div class="pre-protocolo-card__topo">
-        <div>
-          <div class="po-card-section-title">
-            {{ registro.assunto }}
+  <div class="po-cards-grid">
+    @for (registro of registros(); track registro.id) {
+      <div
+        class="po-list-card"
+        [class.po-list-card--precisa-correcao]="registro.status === 'PENDENTE' && !registro.anexoOficioId"
+      >
+        @if (registro.status === 'PENDENTE' && !registro.anexoOficioId) {
+          <span class="po-list-card__pulso-correcao" matTooltip="Sem PDF anexado — anexe o ofício"></span>
+        }
+
+        <div class="po-list-card__header">
+          <mat-icon class="po-list-card__title-icon">mark_email_unread</mat-icon>
+          <span class="po-list-card__title">{{ registro.assunto }}</span>
+          <div class="po-list-card__origem-linha">
+            @if (registro.origem === 'FORMULARIO_PUBLICO') {
+              <span class="po-chip po-chip--info po-list-card__origem-email" matTooltip="Enviado pelo formulário público (sem login)">
+                <mat-icon>public</mat-icon>
+                Formulário
+              </span>
+            } @else {
+              <span class="po-chip po-chip--neutral po-list-card__origem-email" matTooltip="Recebido pela caixa de e-mail">
+                <mat-icon>mail</mat-icon>
+                E-mail
+              </span>
+            }
             @if (registro.status === 'DESCARTADO') {
               <span class="po-chip po-chip--neutral">Descartado</span>
             }
           </div>
-          <p class="po-hint">
-            De: <strong>{{ registro.remetente }}</strong> · Recebido em
-            {{ registro.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}
-          </p>
-          @if (registro.status === 'DESCARTADO' && registro.motivoDescarte) {
-            <p class="po-hint po-hint--erro">Motivo do descarte: {{ registro.motivoDescarte }}</p>
-          }
-          @if (registro.solicitacaoGerada; as sg) {
-            <p class="po-hint">
-              Virou o protocolo
-              @if (sg.numeroProcesso) {
-                <strong>Nº {{ sg.numeroProcesso }}</strong>
-              } @else {
-                <strong>{{ sg.numeroDocumento }}</strong>
-              }
-              — {{ statusMacroLabels[sg.statusMacro] }}
-            </p>
-          }
         </div>
-        <div class="pre-protocolo-card__acoes">
+
+        <div class="po-list-card__row">
+          <mat-icon style="color: var(--row-icon-1)">alternate_email</mat-icon>
+          <span><strong>De:</strong> {{ registro.remetente }}</span>
+        </div>
+        <div class="po-list-card__row">
+          <mat-icon style="color: var(--row-icon-2)">schedule</mat-icon>
+          <span><strong>Recebido em:</strong> {{ registro.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}</span>
+        </div>
+        @if (registro.solicitanteTipo) {
+          <div class="po-list-card__row">
+            <mat-icon style="color: var(--row-icon-4)">badge</mat-icon>
+            <span>
+              <strong>Solicitante:</strong>
+              {{ registro.solicitanteTipo === 'PRESIDENTE' ? 'Presidente do Sindicato Rural' : 'Mobilizador' }}
+            </span>
+          </div>
+        }
+        @if (registro.status === 'DESCARTADO' && registro.motivoDescarte) {
+          <div class="po-list-card__row">
+            <mat-icon style="color: var(--color-warn)">info</mat-icon>
+            <span><strong>Motivo do descarte:</strong> {{ registro.motivoDescarte }}</span>
+          </div>
+        }
+        @if (registro.solicitacaoGerada; as sg) {
+          <div class="po-list-card__row">
+            <mat-icon style="color: var(--row-icon-6)">description</mat-icon>
+            <span>
+              <strong>Virou o protocolo:</strong>
+              @if (sg.numeroProcesso) { Nº {{ sg.numeroProcesso }} } @else { {{ sg.numeroDocumento }} }
+              — {{ statusMacroLabels[sg.statusMacro] }}
+            </span>
+          </div>
+        }
+
+        @if (registro.corpo) {
+          <p class="po-list-card__corpo">{{ registro.corpo }}</p>
+        }
+
+        @if (registro.status === 'PENDENTE' && !registro.anexoOficioId) {
+          <div class="pre-protocolo-card__sem-anexo">
+            <p class="po-hint">Quem está solicitando?</p>
+            <mat-radio-group
+              [value]="solicitanteEscolhido()[registro.id]"
+              (change)="escolherSolicitante(registro.id, $event.value)"
+            >
+              <mat-radio-button value="MOBILIZADOR">Mobilizador</mat-radio-button>
+              <mat-radio-button value="PRESIDENTE">Presidente do Sindicato Rural</mat-radio-button>
+            </mat-radio-group>
+            <input #inputAnexo type="file" accept="application/pdf" hidden (change)="anexarOficio(registro, inputAnexo)" />
+            <button
+              mat-stroked-button
+              color="primary"
+              type="button"
+              [disabled]="enviandoAnexo()[registro.id]"
+              (click)="inputAnexo.click()"
+            >
+              <mat-icon>attach_file</mat-icon>
+              {{ enviandoAnexo()[registro.id] ? 'Enviando…' : 'Anexar Ofício' }}
+            </button>
+          </div>
+        }
+
+        <div class="po-list-card__footer">
+          @if (registro.anexoOficioId) {
+            <button
+              mat-stroked-button
+              type="button"
+              class="po-list-card__pdf-btn"
+              matTooltip="Abrir PDF do ofício"
+              (click)="abrirPdf(registro)"
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              Documento
+            </button>
+          } @else {
+            <button
+              mat-stroked-button
+              type="button"
+              class="po-list-card__pdf-btn po-list-card__pdf-btn--vazio"
+              matTooltip="Sem PDF anexado"
+              disabled
+            >
+              <mat-icon>picture_as_pdf</mat-icon>
+              Documento
+            </button>
+          }
+
           @if (registro.status === 'PENDENTE') {
             <button mat-stroked-button color="warn" type="button" (click)="descartar(registro)">
               <mat-icon>delete_outline</mat-icon>
               Descartar
-            </button>
-            <button mat-flat-button color="primary" type="button" (click)="converter(registro)">
-              <mat-icon>arrow_forward</mat-icon>
-              Converter em Protocolo
             </button>
           } @else {
             @if (registro.solicitacaoGerada; as sg) {
@@ -132,20 +227,24 @@
             }
           }
         </div>
+
+        @if (registro.status === 'PENDENTE') {
+          <button
+            mat-flat-button
+            color="primary"
+            type="button"
+            class="po-list-card__tramitar"
+            [disabled]="!registro.anexoOficioId"
+            [matTooltip]="registro.anexoOficioId ? '' : 'Anexe o ofício antes de converter'"
+            (click)="converter(registro)"
+          >
+            <mat-icon>arrow_forward</mat-icon>
+            Converter em Protocolo
+          </button>
+        }
       </div>
-      <div class="po-divider-gradient"></div>
-
-      @if (registro.corpo) {
-        <p class="pre-protocolo-card__corpo">{{ registro.corpo }}</p>
-      }
-
-      @if (registro.anexoOficioId) {
-        <app-pdf-viewer [anexoId]="registro.anexoOficioId" nomeArquivo="oficio.pdf" altura="320px"></app-pdf-viewer>
-      } @else {
-        <p class="po-hint po-hint--erro">Este e-mail não trouxe um PDF anexado.</p>
-      }
-    </div>
-  }
+    }
+  </div>
 
   <mat-paginator
     class="po-paginator"

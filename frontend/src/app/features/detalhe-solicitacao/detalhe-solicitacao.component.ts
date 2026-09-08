@@ -23,6 +23,7 @@ import { UsuariosService } from '../../core/services/usuarios.service';
 import {
   AnexoProcesso,
   AreaPrograma,
+  AssinaturaRequest,
   ItemExcluidoRequest,
   ItemSolicitacao,
   PAPEIS_PARCEIRO,
@@ -42,6 +43,7 @@ import {
   MotivoDialogComponent,
   MotivoDialogData,
 } from './dialogs/motivo-dialog.component';
+import { AssinaturaDialogComponent } from './dialogs/assinatura-dialog.component';
 import {
   SelecionarCoordenadorDialogComponent,
 } from './dialogs/selecionar-coordenador-dialog.component';
@@ -104,6 +106,22 @@ export class DetalheSolicitacaoComponent implements OnInit {
   private readonly dialog = inject(MatDialog);
   private readonly router = inject(Router);
   private readonly alerta = inject(AlertaService);
+
+  /** Assinatura capturada (opcional) para a próxima decisão de Análise da Assessoria/Despacho — limpa após cada envio. */
+  readonly assinaturaPendente = signal<AssinaturaRequest | null>(null);
+
+  abrirAssinatura(): void {
+    const ref = this.dialog.open(AssinaturaDialogComponent, {
+      data: {
+        titulo: 'Assinar esta decisão',
+        subtitulo: 'Opcional — fica registrado no histórico junto com a tramitação.',
+      },
+      width: '480px',
+    });
+    ref.afterClosed().subscribe((resultado) => {
+      if (resultado) this.assinaturaPendente.set(resultado);
+    });
+  }
 
   readonly tipoItemLabels = TIPO_ITEM_LABELS;
   readonly tipoItemIcones: Record<TipoItem, string> = {
@@ -647,9 +665,11 @@ export class DetalheSolicitacaoComponent implements OnInit {
           decisao: 'APROVAR',
           motivo: observacao,
           itensExcluidos: this.itensExcluidosDoFluxo(),
+          assinatura: this.assinaturaPendente() ?? undefined,
         }),
         'Solicitação aprovada e encaminhada ao Superintendente.'
       );
+      this.assinaturaPendente.set(null);
     });
   }
 
@@ -661,14 +681,17 @@ export class DetalheSolicitacaoComponent implements OnInit {
         rotuloConfirmar: 'Devolver',
         corConfirmar: 'primary',
       },
-      (motivo) =>
+      (motivo) => {
         this.executarAcao(
           this.solicitacoesService.analisarAssessoria(this.solicitacaoId, {
             decisao: 'DEVOLVER_AJUSTE',
             motivo,
+            assinatura: this.assinaturaPendente() ?? undefined,
           }),
           'Solicitação devolvida para ajuste do Mobilizador.'
-        )
+        );
+        this.assinaturaPendente.set(null);
+      }
     );
   }
 
@@ -680,14 +703,17 @@ export class DetalheSolicitacaoComponent implements OnInit {
         rotuloConfirmar: 'Recusar',
         corConfirmar: 'warn',
       },
-      (motivo) =>
+      (motivo) => {
         this.executarAcao(
           this.solicitacoesService.analisarAssessoria(this.solicitacaoId, {
             decisao: 'RECUSAR',
             motivo,
+            assinatura: this.assinaturaPendente() ?? undefined,
           }),
           'Solicitação recusada.'
-        )
+        );
+        this.assinaturaPendente.set(null);
+      }
     );
   }
 
@@ -703,9 +729,11 @@ export class DetalheSolicitacaoComponent implements OnInit {
         diretoriaDestino: 'EDUCACIONAL',
         diretoresIds: valores.diretoresIds,
         itensExcluidos: this.itensExcluidosDoFluxo(),
+        assinatura: this.assinaturaPendente() ?? undefined,
       }),
       'Solicitação despachada para os Diretores selecionados.'
     );
+    this.assinaturaPendente.set(null);
   }
 
   // ---------------------------------------------------------------

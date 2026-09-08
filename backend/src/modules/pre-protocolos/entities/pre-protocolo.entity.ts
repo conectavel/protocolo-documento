@@ -1,6 +1,8 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 export type StatusPreProtocolo = 'PENDENTE' | 'CONVERTIDO' | 'DESCARTADO';
+export type SolicitanteTipo = 'MOBILIZADOR' | 'PRESIDENTE';
+export type OrigemPreProtocolo = 'EMAIL' | 'FORMULARIO_PUBLICO';
 
 /**
  * Solicitação recebida por e-mail (ex.: superintendencia@senar-go.com.br) antes de virar
@@ -25,6 +27,37 @@ export class PreProtocolo {
 
   @Column({ name: 'anexo_oficio_id', nullable: true })
   anexoOficioId: string;
+
+  /**
+   * Dados de contato de quem preencheu o formulário público (origem = FORMULARIO_PUBLICO;
+   * nulos na ingestão por e-mail). O CPF permite reconhecer a mesma pessoa numa próxima
+   * solicitação e pré-preencher o formulário a partir do último envio dela (ver
+   * `PreProtocolosService.buscarDadosPorCpf`) — se não encontrar, a pessoa preenche
+   * manualmente e segue normalmente.
+   */
+  @Column({ name: 'cpf', type: 'varchar', nullable: true })
+  cpf: string | null;
+
+  @Column({ name: 'data_nascimento', type: 'date', nullable: true })
+  dataNascimento: string | null;
+
+  @Column({ name: 'telefone', type: 'varchar', nullable: true })
+  telefone: string | null;
+
+  @Column({ name: 'telefone_whatsapp', default: false })
+  telefoneWhatsapp: boolean;
+
+  /** De onde este registro chegou — conector de e-mail ou formulário público de envio anônimo. */
+  @Column({ name: 'origem', type: 'varchar', default: 'EMAIL' })
+  origem: OrigemPreProtocolo;
+
+  /**
+   * Quando o e-mail não veio com o ofício em PDF, o Assessor anexa manualmente
+   * e precisa registrar quem está solicitando (o e-mail sozinho não deixa isso
+   * claro) — puramente informativo, para orientar a conversão em Protocolo.
+   */
+  @Column({ name: 'solicitante_tipo', type: 'varchar', nullable: true })
+  solicitanteTipo: SolicitanteTipo | null;
 
   @Column({ default: 'PENDENTE' })
   status: StatusPreProtocolo;

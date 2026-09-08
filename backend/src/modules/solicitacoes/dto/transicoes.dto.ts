@@ -25,6 +25,32 @@ export class ItemExcluidoDto {
   @IsOptional() @IsEnum(ResultadoDevolutiva) resultado?: ResultadoDevolutiva;
 }
 
+/**
+ * Assinatura digital opcional anexada a uma decisão (Análise da Assessoria ou
+ * Despacho da Superintendência). `CERTIFICADO_SIMULADO` ainda não tem validação
+ * criptográfica real (ver AssinaturaDigital entity) — é só a experiência de
+ * tela, aguardando a escolha de um provedor ICP-Brasil de verdade.
+ */
+export class AssinaturaDto {
+  @IsIn(['ELETRONICA_SIMPLES', 'CERTIFICADO_SIMULADO'])
+  tipo: 'ELETRONICA_SIMPLES' | 'CERTIFICADO_SIMULADO';
+
+  @ValidateIf((dto) => dto.tipo === 'ELETRONICA_SIMPLES')
+  @IsNotEmpty({ message: 'Desenhe a assinatura antes de confirmar.' })
+  @IsString()
+  imagemAssinaturaBase64?: string;
+
+  @ValidateIf((dto) => dto.tipo === 'CERTIFICADO_SIMULADO')
+  @IsNotEmpty({ message: 'Informe o nome do arquivo do certificado.' })
+  @IsString()
+  certificadoNomeArquivo?: string;
+
+  @ValidateIf((dto) => dto.tipo === 'CERTIFICADO_SIMULADO')
+  @IsNotEmpty({ message: 'Informe o nome do titular do certificado.' })
+  @IsString()
+  titularCertificado?: string;
+}
+
 export class AnaliseAssessoriaDto {
   @IsIn(['APROVAR', 'DEVOLVER_AJUSTE', 'RECUSAR'])
   decisao: 'APROVAR' | 'DEVOLVER_AJUSTE' | 'RECUSAR';
@@ -36,6 +62,8 @@ export class AnaliseAssessoriaDto {
 
   /** Itens que a Assessoria decidiu não incluir no fluxo (ficam "Parcialmente Atendido" automaticamente). */
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ItemExcluidoDto) itensExcluidos?: ItemExcluidoDto[];
+
+  @IsOptional() @ValidateNested() @Type(() => AssinaturaDto) assinatura?: AssinaturaDto;
 }
 
 export class DespachoSuperintendenteDto {
@@ -49,6 +77,8 @@ export class DespachoSuperintendenteDto {
 
   /** Itens que o Superintendente decidiu não incluir no fluxo (ficam "Parcialmente Atendido" automaticamente). */
   @IsOptional() @IsArray() @ValidateNested({ each: true }) @Type(() => ItemExcluidoDto) itensExcluidos?: ItemExcluidoDto[];
+
+  @IsOptional() @ValidateNested() @Type(() => AssinaturaDto) assinatura?: AssinaturaDto;
 }
 
 /** Direciona UM item específico para uma Área/Programa (e, opcionalmente, já designa o Coordenador). */

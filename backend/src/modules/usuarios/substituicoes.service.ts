@@ -44,12 +44,23 @@ export class SubstituicoesService {
     return this.mapComNomes(registro);
   }
 
-  async remover(id: string): Promise<void> {
+  /**
+   * Encerra a substituição antecipadamente. Nunca apaga o registro — ele precisa
+   * continuar disponível para eventuais provas/auditoria — apenas marca o momento
+   * em que parou de valer.
+   */
+  async encerrar(id: string, usuario: UsuarioAutenticado): Promise<ReturnType<SubstituicoesService['mapComNomes']>> {
     const registro = await this.buscarOuFalhar(id);
-    await this.repo.remove(registro);
+    if (registro.encerradoEm) {
+      throw new BadRequestException('Esta substituição já está encerrada.');
+    }
+    registro.encerradoEm = new Date();
+    registro.encerradoPorId = usuario.id;
+    await this.repo.save(registro);
+    return this.mapComNomes(registro);
   }
 
-  /** Usado pelo JwtStrategy: substituição vigente hoje em que o usuário logado é o substituto. */
+  /** Usado pelo JwtStrategy: substituição vigente hoje (e não encerrada antecipadamente) em que o usuário logado é o substituto. */
   async buscarSubstituicaoAtivaComoSubstituto(usuarioSubstitutoId: string): Promise<SubstituicaoUsuario | null> {
     const hoje = new Date().toISOString().slice(0, 10);
     return this.repo
@@ -57,6 +68,7 @@ export class SubstituicoesService {
       .where('s.usuarioSubstitutoId = :id', { id: usuarioSubstitutoId })
       .andWhere('s.dataInicio <= :hoje', { hoje })
       .andWhere('s.dataFim >= :hoje', { hoje })
+      .andWhere('s.encerradoEm IS NULL')
       .orderBy('s.criadoEm', 'DESC')
       .getOne();
   }
@@ -84,16 +96,20 @@ export class SubstituicoesService {
   }
 
   private async mapComNomes(registro: SubstituicaoUsuario) {
-    const [substituido, substituto] = await Promise.all([
+    const [substituido, substituto, encerradoPor] = await Promise.all([
       this.usuarioRepo.findOne({ where: { id: registro.usuarioSubstituidoId } }),
       this.usuarioRepo.findOne({ where: { id: registro.usuarioSubstitutoId } }),
+      registro.encerradoPorId ? this.usuarioRepo.findOne({ where: { id: registro.encerradoPorId } }) : null,
     ]);
     const hoje = new Date().toISOString().slice(0, 10);
+    const dentroDoPeriodo = registro.dataInicio <= hoje && registro.dataFim >= hoje;
     return {
       ...registro,
       usuarioSubstituidoNome: substituido?.nome,
       usuarioSubstitutoNome: substituto?.nome,
-      vigente: registro.dataInicio <= hoje && registro.dataFim >= hoje,
+      encerradoPorNome: encerradoPor?.nome,
+      vigente: dentroDoPeriodo && !registro.encerradoEm,
+      encerradaAntecipadamente: !!registro.encerradoEm,
     };
   }
 }

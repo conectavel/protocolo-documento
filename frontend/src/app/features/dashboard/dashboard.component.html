@@ -11,18 +11,62 @@
 
 <div class="po-card po-dash-filtro">
   <form [formGroup]="filtroForm" class="po-dash-filtro__form">
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="po-dash-filtro__campo--data">
       <mat-label>Data início</mat-label>
       <input matInput [matDatepicker]="pickerInicio" formControlName="dataInicio" />
       <mat-datepicker-toggle matIconSuffix [for]="pickerInicio"></mat-datepicker-toggle>
       <mat-datepicker #pickerInicio></mat-datepicker>
     </mat-form-field>
-    <mat-form-field appearance="outline">
+    <mat-form-field appearance="outline" class="po-dash-filtro__campo--data">
       <mat-label>Data fim</mat-label>
       <input matInput [matDatepicker]="pickerFim" formControlName="dataFim" />
       <mat-datepicker-toggle matIconSuffix [for]="pickerFim"></mat-datepicker-toggle>
       <mat-datepicker #pickerFim></mat-datepicker>
     </mat-form-field>
+
+    <mat-form-field appearance="outline" class="po-dash-filtro__campo--parceiro">
+      <mat-label>Sindicato Parceiro</mat-label>
+      <mat-select formControlName="parceiroId" (selectionChange)="aoMudarParceiro()">
+        <mat-option value="">Todos</mat-option>
+        @for (parceiro of parceiros(); track parceiro.id) {
+          <mat-option [value]="parceiro.id">{{ parceiro.nome }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="po-dash-filtro__campo--regional">
+      <mat-label>Coordenador Regional</mat-label>
+      <mat-select formControlName="regionalId" (selectionChange)="aplicarFiltro()">
+        <mat-option value="">Todos</mat-option>
+        @for (regional of regionais(); track regional.id) {
+          <mat-option [value]="regional.id">{{ regional.nome }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
+    <mat-form-field appearance="outline" class="po-dash-filtro__campo--mobilizador">
+      <mat-label>Mobilizador</mat-label>
+      <mat-select formControlName="mobilizadorId" [disabled]="!filtroForm.controls.parceiroId.value" (selectionChange)="aplicarFiltro()">
+        <mat-option value="">Todos</mat-option>
+        @for (mobilizador of mobilizadores(); track mobilizador.id) {
+          <mat-option [value]="mobilizador.id">{{ mobilizador.nome }}</mat-option>
+        }
+      </mat-select>
+      @if (!filtroForm.controls.parceiroId.value) {
+        <mat-hint>Selecione um Parceiro primeiro</mat-hint>
+      }
+    </mat-form-field>
+
+    <mat-form-field appearance="outline">
+      <mat-label>Tipo de Solicitação</mat-label>
+      <mat-select formControlName="tipoSolicitacao" (selectionChange)="aplicarFiltro()">
+        <mat-option value="">Todos</mat-option>
+        @for (tipo of tiposItem; track tipo) {
+          <mat-option [value]="tipo">{{ tipoItemLabels[tipo] }}</mat-option>
+        }
+      </mat-select>
+    </mat-form-field>
+
     <button mat-flat-button color="primary" type="button" (click)="aplicarFiltro()">
       <mat-icon>filter_alt</mat-icon>
       Aplicar período
@@ -104,20 +148,11 @@
       <div class="po-card-section-title">Distribuição por status</div>
       <div class="po-divider-gradient"></div>
 
-      @if (barrasStatus().length === 0) {
+      @if (m.porStatus.length === 0 || m.totalSolicitacoes === 0) {
         <p class="po-hint">Nenhuma solicitação no período selecionado.</p>
+      } @else {
+        <app-chart-card type="doughnut" [data]="graficoStatus().data" [options]="graficoStatus().options" [altura]="260"></app-chart-card>
       }
-      <div class="po-dash-barras">
-        @for (b of barrasStatus(); track b.chave) {
-          <div class="po-dash-barra-linha">
-            <span class="po-dash-barra-linha__rotulo">{{ b.rotulo }}</span>
-            <div class="po-dash-barra-linha__trilho">
-              <div class="po-dash-barra-linha__preenchimento" [style.width.%]="b.percentual" [style.background]="b.cor"></div>
-            </div>
-            <span class="po-dash-barra-linha__valor">{{ b.total }}</span>
-          </div>
-        }
-      </div>
     </div>
 
     <!-- Por tipo de solicitação -->
@@ -125,20 +160,11 @@
       <div class="po-card-section-title">Por tipo de solicitação</div>
       <div class="po-divider-gradient"></div>
 
-      @if (barrasTipoItem().length === 0) {
+      @if (m.porTipoItem.length === 0) {
         <p class="po-hint">Nenhum item no período selecionado.</p>
+      } @else {
+        <app-chart-card type="bar" [data]="graficoTipoItem().data" [options]="graficoTipoItem().options" [altura]="260"></app-chart-card>
       }
-      <div class="po-dash-barras">
-        @for (b of barrasTipoItem(); track b.chave) {
-          <div class="po-dash-barra-linha">
-            <span class="po-dash-barra-linha__rotulo">{{ b.rotulo }}</span>
-            <div class="po-dash-barra-linha__trilho">
-              <div class="po-dash-barra-linha__preenchimento po-dash-barra-linha__preenchimento--primaria" [style.width.%]="b.percentual"></div>
-            </div>
-            <span class="po-dash-barra-linha__valor">{{ b.total }}</span>
-          </div>
-        }
-      </div>
     </div>
 
     <!-- Evolução no período -->
@@ -146,17 +172,10 @@
       <div class="po-card-section-title">Evolução no período (solicitações por dia)</div>
       <div class="po-divider-gradient"></div>
 
-      @if (serieBarras().length === 0) {
+      @if (m.serieTemporal.length === 0) {
         <p class="po-hint">Nenhuma solicitação no período selecionado.</p>
       } @else {
-        <div class="po-dash-serie">
-          @for (dia of serieBarras(); track dia.data) {
-            <div class="po-dash-serie__coluna" [matTooltip]="dia.rotulo + ': ' + dia.total">
-              <div class="po-dash-serie__barra" [style.height.%]="dia.percentualVisivel"></div>
-              <span class="po-dash-serie__rotulo">{{ dia.rotulo }}</span>
-            </div>
-          }
-        </div>
+        <app-chart-card type="line" [data]="graficoSerie().data" [options]="graficoSerie().options" [altura]="260"></app-chart-card>
       }
     </div>
 
@@ -165,9 +184,10 @@
       <div class="po-card-section-title">Por área/programa</div>
       <div class="po-divider-gradient"></div>
 
-      @if (barrasArea().length === 0) {
+      @if (m.porArea.length === 0) {
         <p class="po-hint">Nenhum item já direcionado a uma área no período.</p>
       } @else {
+        <app-chart-card type="bar" [data]="graficoArea().data" [options]="graficoArea().options" [altura]="260"></app-chart-card>
         <div class="po-table-container">
           <table class="po-table">
             <thead>
@@ -250,24 +270,15 @@
     }
 
     <!-- Top Parceiros -->
-    <div class="po-card">
+    <div class="po-card po-dash-grid__largo">
       <div class="po-card-section-title">Top Parceiros por volume</div>
       <div class="po-divider-gradient"></div>
 
-      @if (barrasParceiro().length === 0) {
+      @if (m.porParceiro.length === 0) {
         <p class="po-hint">Nenhuma solicitação no período selecionado.</p>
+      } @else {
+        <app-chart-card type="bar" [data]="graficoParceiro().data" [options]="graficoParceiro().options" [altura]="Math.max(220, m.porParceiro.length * 34)"></app-chart-card>
       }
-      <div class="po-dash-barras">
-        @for (b of barrasParceiro(); track b.chave) {
-          <div class="po-dash-barra-linha">
-            <span class="po-dash-barra-linha__rotulo">{{ b.rotulo }}</span>
-            <div class="po-dash-barra-linha__trilho">
-              <div class="po-dash-barra-linha__preenchimento po-dash-barra-linha__preenchimento--primaria" [style.width.%]="b.percentual"></div>
-            </div>
-            <span class="po-dash-barra-linha__valor">{{ b.total }}</span>
-          </div>
-        }
-      </div>
     </div>
   </div>
 }

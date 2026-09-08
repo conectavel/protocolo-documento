@@ -5,11 +5,14 @@ import { PreProtocolo } from './entities/pre-protocolo.entity';
 import { Solicitacao } from '../solicitacoes/entities/solicitacao.entity';
 import { IngerirPreProtocoloDto } from './dto/ingerir-pre-protocolo.dto';
 import { ListarPreProtocolosDto } from './dto/listar-pre-protocolos.dto';
+import { AnexarOficioPreProtocoloDto } from './dto/anexar-oficio-pre-protocolo.dto';
+import { EnviarSolicitacaoPublicaDto } from './dto/enviar-solicitacao-publica.dto';
 import { AnexosService } from '../anexos/anexos.service';
 import { SolicitacoesService } from '../solicitacoes/solicitacoes.service';
 import { CriarSolicitacaoDto } from '../solicitacoes/dto/criar-solicitacao.dto';
 import { Papel } from '../../common/enums/papel.enum';
 import { UsuarioAutenticado } from '../../common/guards/jwt-auth.guard';
+import { isCpfValido, normalizarCpf } from '../../common/utils/cpf.util';
 
 const PAGE_SIZE_DEFAULT = 12;
 
@@ -50,6 +53,89 @@ export class PreProtocolosService {
         status: 'PENDENTE',
       }),
     );
+  }
+
+  /**
+   * Formulário público de envio anônimo (sem login) — qualquer pessoa pode
+   * mandar uma solicitação por aqui; vira um Pré-Protocolo comum (mesma fila
+   * de triagem do Assessor usada para e-mails), só marcado com
+   * `origem = FORMULARIO_PUBLICO` para diferenciar na lista. Endpoint é
+   * público e limitado por rate-limit no controller — nunca cria uma
+   * Solicitação nem toca em nenhuma outra tabela além de `pre_protocolos`/`anexos`.
+   */
+  async receberSolicitacaoPublica(
+    dto: EnviarSolicitacaoPublicaDto,
+    arquivo?: { originalname: string; buffer: Buffer; mimetype: string; size: number },
+  ): Promise<{ recebido: true }> {
+    if (!isCpfValido(dto.cpf)) {
+      throw new BadRequestException('CPF inválido.');
+    }
+
+    let anexoOficioId: string | undefined;
+
+    if (arquivo) {
+      if (arquivo.mimetype !== 'application/pdf') {
+        throw new BadRequestException('O anexo precisa ser um arquivo PDF.');
+      }
+      const anexo = await this.anexosService.salvar(arquivo, 'OFICIO');
+      anexoOficioId = anexo.id;
+    }
+
+    await this.repo.save(
+      this.repo.create({
+        remetente: `${dto.nome} <${dto.email}>`,
+        assunto: dto.assunto,
+        corpo: dto.mensagem,
+        anexoOficioId,
+        status: 'PENDENTE',
+        origem: 'FORMULARIO_PUBLICO',
+        cpf: dto.cpf,
+        dataNascimento: dto.dataNascimento,
+        telefone: dto.telefone,
+        telefoneWhatsapp: dto.telefoneWhatsapp ?? false,
+      }),
+    );
+
+    return { recebido: true };
+  }
+
+  /**
+   * Usado pelo formulário público: ao digitar o CPF, tenta reconhecer a pessoa a partir
+   * do envio anterior mais recente com o mesmo CPF e devolve nome/e-mail/telefone/data de
+   * nascimento para pré-preencher o formulário. Se não encontrar, a pessoa preenche tudo
+   * manualmente e segue normalmente — não é um cadastro obrigatório.
+   */
+  async buscarDadosPorCpf(cpfBruto: string): Promise<
+    | { encontrado: false }
+    | {
+        encontrado: true;
+        nome: string;
+        email: string;
+        telefone: string | null;
+        telefoneWhatsapp: boolean;
+        dataNascimento: string | null;
+      }
+  > {
+    const cpf = normalizarCpf(cpfBruto);
+    if (!isCpfValido(cpf)) {
+      throw new BadRequestException('CPF inválido.');
+    }
+
+    const registro = await this.repo.findOne({
+      where: { cpf, origem: 'FORMULARIO_PUBLICO' },
+      order: { recebidoEm: 'DESC' },
+    });
+    if (!registro) return { encontrado: false };
+
+    const [, nome, email] = registro.remetente.match(/^(.*) <(.+)>$/) ?? [];
+    return {
+      encontrado: true,
+      nome: nome ?? registro.remetente,
+      email: email ?? '',
+      telefone: registro.telefone,
+      telefoneWhatsapp: registro.telefoneWhatsapp,
+      dataNascimento: registro.dataNascimento,
+    };
   }
 
   /**
@@ -126,6 +212,28 @@ export class PreProtocolosService {
     await this.repo.save(preProtocolo);
 
     return solicitacao;
+  }
+
+  /**
+   * Anexa manualmente o ofício em PDF a um Pré-Protocolo que chegou por
+   * e-mail sem anexo, e registra quem está solicitando (Mobilizador ou
+   * Presidente) — informativo, usado para orientar a conversão em Protocolo.
+   */
+  async anexarOficio(
+    id: string,
+    dto: AnexarOficioPreProtocoloDto,
+    usuario: UsuarioAutenticado,
+  ): Promise<PreProtocolo> {
+    this.exigirAssessorOuAdmin(usuario);
+    const preProtocolo = await this.buscarOuFalhar(id);
+
+    if (preProtocolo.status !== 'PENDENTE') {
+      throw new BadRequestException('Este pré-protocolo já foi processado.');
+    }
+
+    preProtocolo.anexoOficioId = dto.anexoOficioId;
+    preProtocolo.solicitanteTipo = dto.solicitanteTipo;
+    return this.repo.save(preProtocolo);
   }
 
   async descartar(id: string, motivo: string | undefined, usuario: UsuarioAutenticado): Promise<PreProtocolo> {

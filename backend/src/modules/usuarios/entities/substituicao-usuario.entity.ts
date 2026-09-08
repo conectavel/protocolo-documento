@@ -38,4 +38,15 @@ export class SubstituicaoUsuario {
 
   @CreateDateColumn({ name: 'criado_em', type: 'timestamptz' })
   criadoEm: Date;
+
+  /**
+   * Encerramento antecipado (antes do fim do período previsto). O registro nunca é
+   * apagado — mesmo encerrada, a substituição precisa continuar disponível para
+   * eventuais provas/auditoria — apenas para de valer a partir deste momento.
+   */
+  @Column({ name: 'encerrado_em', type: 'timestamptz', nullable: true })
+  encerradoEm: Date | null;
+
+  @Column({ name: 'encerrado_por_id', type: 'varchar', nullable: true })
+  encerradoPorId: string | null;
 }

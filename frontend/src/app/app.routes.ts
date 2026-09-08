@@ -9,6 +9,17 @@ export const routes: Routes = [
       import('./features/login/login.component').then((m) => m.LoginComponent),
   },
   {
+    // Fora do shell autenticado — qualquer pessoa acessa sem login, envia uma
+    // solicitação que vira Pré-Protocolo (origem = FORMULARIO_PUBLICO) na
+    // mesma fila de triagem usada para e-mails.
+    path: 'enviar-solicitacao',
+    loadComponent: () =>
+      import('./features/enviar-solicitacao/enviar-solicitacao.component').then(
+        (m) => m.EnviarSolicitacaoComponent
+      ),
+    title: 'Enviar Solicitação',
+  },
+  {
     path: '',
     loadComponent: () =>
       import('./shell/shell.component').then((m) => m.ShellComponent),
@@ -72,7 +83,7 @@ export const routes: Routes = [
           import('./features/pre-protocolo/pre-protocolo-lista.component').then(
             (m) => m.PreProtocoloListaComponent
           ),
-        title: 'Pré Protocolo',
+        title: 'Pré-Protocolo',
       },
       {
         path: 'pre-protocolo/:id/converter',
@@ -81,7 +92,19 @@ export const routes: Routes = [
           import('./features/pre-protocolo/converter-pre-protocolo.component').then(
             (m) => m.ConverterPreProtocoloComponent
           ),
-        title: 'Converter Pré Protocolo',
+        title: 'Converter Pré-Protocolo',
+      },
+      {
+        // Mesmo componente do "Converter Pré Protocolo", em modo "novo" (sem :id) —
+        // dá autonomia ao Assessor para protocolar diretamente em nome de um
+        // Parceiro quando o ofício chega em mãos, não por e-mail.
+        path: 'protocolar-assessor',
+        canActivate: [roleGuard(['ASSESSOR', 'ADMIN'])],
+        loadComponent: () =>
+          import('./features/pre-protocolo/converter-pre-protocolo.component').then(
+            (m) => m.ConverterPreProtocoloComponent
+          ),
+        title: 'Novo Protocolo',
       },
       {
         path: 'substitutos',

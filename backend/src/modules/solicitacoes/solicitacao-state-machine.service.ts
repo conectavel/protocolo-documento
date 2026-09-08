@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Solicitacao } from './entities/solicitacao.entity';
 import { ItemSolicitacao } from './entities/item-solicitacao.entity';
 import { Tramitacao } from './entities/tramitacao.entity';
+import { AssinaturaDigital } from './entities/assinatura-digital.entity';
 import { Devolutiva } from '../devolutivas/entities/devolutiva.entity';
 import {
   AcaoTramitacao,
@@ -12,8 +13,11 @@ import {
   StatusMacro,
 } from '../../common/enums/solicitacao.enum';
 import { UsuarioAutenticado } from '../../common/guards/jwt-auth.guard';
-import { EditarItemDto, RegistrarDevolutivaDto } from './dto/transicoes.dto';
+import { AssinaturaDto, EditarItemDto, RegistrarDevolutivaDto } from './dto/transicoes.dto';
 import { NotificacoesService } from '../notificacoes/notificacoes.service';
+
+const AVISO_CERTIFICADO_SIMULADO =
+  'Assinatura com certificado digital simulada — ainda sem validação criptográfica real (ICP-Brasil não integrado). Não tem validade jurídica.';
 
 const FINALIZADOS: StatusItem[] = [
   StatusItem.ATENDIDO,
@@ -34,6 +38,7 @@ export class SolicitacaoStateMachineService {
     @InjectRepository(Solicitacao) private readonly solicitacaoRepo: Repository<Solicitacao>,
     @InjectRepository(ItemSolicitacao) private readonly itemRepo: Repository<ItemSolicitacao>,
     @InjectRepository(Tramitacao) private readonly tramitacaoRepo: Repository<Tramitacao>,
+    @InjectRepository(AssinaturaDigital) private readonly assinaturaRepo: Repository<AssinaturaDigital>,
     @InjectRepository(Devolutiva) private readonly devolutivaRepo: Repository<Devolutiva>,
     private readonly notificacoes: NotificacoesService,
   ) {}
@@ -69,6 +74,7 @@ export class SolicitacaoStateMachineService {
     usuario: UsuarioAutenticado,
     decisao: 'APROVAR' | 'DEVOLVER_AJUSTE' | 'RECUSAR',
     motivo?: string,
+    assinatura?: AssinaturaDto,
   ) {
     this.assertStatus(solicitacao, StatusMacro.EM_ANALISE_ASSESSORIA);
     const deEtapa = solicitacao.etapaAtual;
@@ -80,13 +86,14 @@ export class SolicitacaoStateMachineService {
         statusMacro: solicitacao.statusMacro,
         etapaAtual: solicitacao.etapaAtual,
       });
-      await this.registrarTramitacao(solicitacao, {
+      const tramitacao = await this.registrarTramitacao(solicitacao, {
         deEtapa,
         paraEtapa: solicitacao.etapaAtual,
         acao: AcaoTramitacao.APROVAR,
         usuario,
         motivo,
       });
+      await this.registrarAssinatura(tramitacao.id, usuario, assinatura);
       await this.notificacoes.notificarSuperintendente(solicitacao);
       return;
     }
@@ -100,13 +107,14 @@ export class SolicitacaoStateMachineService {
         etapaAtual: solicitacao.etapaAtual,
         motivoDevolucaoOuRecusa: solicitacao.motivoDevolucaoOuRecusa,
       });
-      await this.registrarTramitacao(solicitacao, {
+      const tramitacao = await this.registrarTramitacao(solicitacao, {
         deEtapa,
         paraEtapa: solicitacao.etapaAtual,
         acao: AcaoTramitacao.DEVOLVER_AJUSTE,
         usuario,
         motivo,
       });
+      await this.registrarAssinatura(tramitacao.id, usuario, assinatura);
       await this.notificacoes.notificarMobilizadorEPresidente(
         solicitacao,
         'SOLICITACAO_DEVOLVIDA_AJUSTE',
@@ -124,13 +132,14 @@ export class SolicitacaoStateMachineService {
       etapaAtual: solicitacao.etapaAtual,
       motivoDevolucaoOuRecusa: solicitacao.motivoDevolucaoOuRecusa,
     });
-    await this.registrarTramitacao(solicitacao, {
+    const tramitacao = await this.registrarTramitacao(solicitacao, {
       deEtapa,
       paraEtapa: solicitacao.etapaAtual,
       acao: AcaoTramitacao.RECUSAR,
       usuario,
       motivo,
     });
+    await this.registrarAssinatura(tramitacao.id, usuario, assinatura);
     await this.notificacoes.notificarMobilizadorEPresidente(
       solicitacao,
       'DEVOLUTIVA_FINAL',
@@ -178,6 +187,7 @@ export class SolicitacaoStateMachineService {
     usuario: UsuarioAutenticado,
     diretoriaDestino: 'EDUCACIONAL',
     diretoresIds: string[],
+    assinatura?: AssinaturaDto,
   ) {
     this.assertStatus(solicitacao, StatusMacro.EM_DESPACHO);
     const deEtapa = solicitacao.etapaAtual;
@@ -191,14 +201,37 @@ export class SolicitacaoStateMachineService {
       etapaAtual: solicitacao.etapaAtual,
       diretoresDesignadosIds: solicitacao.diretoresDesignadosIds,
     });
-    await this.registrarTramitacao(solicitacao, {
+    const tramitacao = await this.registrarTramitacao(solicitacao, {
       deEtapa,
       paraEtapa: solicitacao.etapaAtual,
       acao: AcaoTramitacao.DESPACHAR,
       usuario,
       motivo: `Diretoria destino: ${diretoriaDestino} · ${diretoresIds.length} diretor(es) designado(s)`,
     });
+    await this.registrarAssinatura(tramitacao.id, usuario, assinatura);
     await this.notificacoes.notificarDiretores(solicitacao, diretoresIds);
+  }
+
+  /** Persiste a assinatura (se enviada) anexada à tramitação recém-criada. Nunca bloqueia a transição em si. */
+  private async registrarAssinatura(
+    tramitacaoId: string,
+    usuario: UsuarioAutenticado,
+    assinatura?: AssinaturaDto,
+  ): Promise<void> {
+    if (!assinatura) return;
+    await this.assinaturaRepo.save(
+      this.assinaturaRepo.create({
+        tramitacaoId,
+        usuarioId: usuario.id,
+        usuarioNome: usuario.nome,
+        tipo: assinatura.tipo,
+        imagemAssinatura: assinatura.tipo === 'ELETRONICA_SIMPLES' ? assinatura.imagemAssinaturaBase64 ?? null : null,
+        certificadoNomeArquivo: assinatura.tipo === 'CERTIFICADO_SIMULADO' ? assinatura.certificadoNomeArquivo ?? null : null,
+        titularCertificado: assinatura.tipo === 'CERTIFICADO_SIMULADO' ? assinatura.titularCertificado ?? null : null,
+        validada: false,
+        avisoValidade: assinatura.tipo === 'CERTIFICADO_SIMULADO' ? AVISO_CERTIFICADO_SIMULADO : null,
+      }),
+    );
   }
 
   // ---------------------------------------------------------------- HU05

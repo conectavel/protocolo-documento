@@ -1,4 +1,4 @@
-import { Papel, StatusItem, StatusMacro, TipoItem } from './enums';
+import { Papel, StatusItem, StatusMacro, TipoItem, Urgencia } from './enums';
 
 /**
  * Devolutiva registrada pelo Coordenador da Ação/Programa (HU07/HU09).
@@ -94,6 +94,7 @@ export interface Tramitacao {
   responsavelNome?: string;
   responsavelPapel?: Papel;
   criadoEm: string;
+  assinatura?: Assinatura | null;
 }
 
 export interface Solicitacao {
@@ -113,6 +114,8 @@ export interface Solicitacao {
   numeroDocumento?: string;
   dataDocumento: string;
   resumoObservacoes?: string;
+  /** Classificação de urgência — livre, só para priorizar/filtrar; toda solicitação nasce NORMAL. */
+  urgencia?: Urgencia;
   anexoOficioId: string;
   anexoOficioNome?: string;
 
@@ -153,6 +156,7 @@ export interface CriarSolicitacaoRequest {
   numeroDocumento?: string;
   dataDocumento: string;
   resumoObservacoes?: string;
+  urgencia?: Urgencia;
   anexoOficioId: string;
   itens: ItemSolicitacao[];
 }
@@ -165,11 +169,42 @@ export interface ItemExcluidoRequest {
   resultado?: 'ATENDIDO' | 'PARCIALMENTE_ATENDIDO' | 'NAO_ATENDIDO';
 }
 
+export type TipoAssinatura = 'ELETRONICA_SIMPLES' | 'CERTIFICADO_SIMULADO';
+
+/**
+ * Assinatura digital opcional anexada a uma decisão (Análise da Assessoria ou
+ * Despacho da Superintendência). `CERTIFICADO_SIMULADO` ainda não valida
+ * criptografia real — é só a experiência de tela, ver AssinaturaDialogComponent.
+ */
+export interface AssinaturaRequest {
+  tipo: TipoAssinatura;
+  imagemAssinaturaBase64?: string;
+  certificadoNomeArquivo?: string;
+  titularCertificado?: string;
+}
+
+export interface Assinatura {
+  tipo: TipoAssinatura;
+  imagemAssinatura: string | null;
+  certificadoNomeArquivo: string | null;
+  titularCertificado: string | null;
+  validada: boolean;
+  avisoValidade: string | null;
+  assinadoEm: string;
+}
+
+/** Selos das abas do Painel de Ofícios — total por StatusMacro + "Meus Pendentes" (por papel). */
+export interface Contadores {
+  porStatus: Partial<Record<StatusMacro, number>>;
+  meusPendentes: number;
+}
+
 export interface AnaliseAssessoriaRequest {
   decisao: 'APROVAR' | 'DEVOLVER_AJUSTE' | 'RECUSAR';
   motivo?: string;
   /** Itens que a Assessoria decidiu não incluir no fluxo (ficam "Parcialmente Atendido" automaticamente). */
   itensExcluidos?: ItemExcluidoRequest[];
+  assinatura?: AssinaturaRequest;
 }
 
 export interface DespachoSuperintendenteRequest {
@@ -177,6 +212,7 @@ export interface DespachoSuperintendenteRequest {
   diretoresIds: string[];
   /** Itens que o Superintendente decidiu não incluir no fluxo (ficam "Parcialmente Atendido" automaticamente). */
   itensExcluidos?: ItemExcluidoRequest[];
+  assinatura?: AssinaturaRequest;
 }
 
 /** Direciona UM item específico — cada item de uma solicitação pode ir para uma Área diferente. */
@@ -207,12 +243,15 @@ export interface RegistrarDevolutivaRequest {
 
 export interface ListaSolicitacoesFiltro {
   status?: StatusMacro;
+  urgencia?: Urgencia;
   parceiroId?: string;
   regionalId?: string;
   tipoSolicitacao?: TipoItem;
   acaoAtividade?: string;
   disciplina?: string;
   numeroDocumento?: string;
+  /** Nº de Processo — identificador gerado pelo sistema (ex.: 20260902001), exibido com o ícone "#". */
+  numeroProcesso?: string;
   dataInicio?: string;
   dataFim?: string;
   page?: number;

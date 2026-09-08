@@ -18,6 +18,34 @@ export type TipoItem =
   | 'SOLICITACAO_ITENS'
   | 'CONVITE';
 
+/**
+ * Classificação de urgência da demanda — livre, só para priorizar visualmente/
+ * filtrar, não altera o fluxo/SLA. Toda solicitação nasce NORMAL (ver
+ * CriarSolicitacaoDto no backend).
+ */
+export type Urgencia = 'BAIXA' | 'NORMAL' | 'ALTA' | 'URGENTE';
+
+export const URGENCIA_LABELS: Record<Urgencia, string> = {
+  BAIXA: 'Baixa',
+  NORMAL: 'Normal',
+  ALTA: 'Alta',
+  URGENTE: 'Urgente',
+};
+
+/** Tom do chip por urgência — sem vermelho (mesma convenção dos chips de status). */
+export function chipTomUrgencia(urgencia: Urgencia): 'neutral' | 'info' | 'warning' | 'purple' {
+  switch (urgencia) {
+    case 'BAIXA':
+      return 'neutral';
+    case 'ALTA':
+      return 'warning';
+    case 'URGENTE':
+      return 'purple';
+    default:
+      return 'info';
+  }
+}
+
 export type StatusItem =
   | 'PENDENTE'
   | 'EM_ANALISE'
@@ -132,6 +160,7 @@ export function chipTomStatusItem(status: StatusItem): 'success' | 'warning' | '
  * A aba "Despacho" só é exibida a papéis internos (nunca ao Mobilizador — HU01).
  */
 export type AbaPainel =
+  | 'MEUS_PENDENTES'
   | 'INICIADOS'
   | 'DESPACHO'
   | 'ATENDIDOS'

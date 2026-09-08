@@ -10,13 +10,16 @@ import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatIconModule } from '@angular/material/icon';
 import { MatInputModule } from '@angular/material/input';
 import { MatPaginatorModule, PageEvent } from '@angular/material/paginator';
+import { MatRadioModule } from '@angular/material/radio';
 import { MatSelectModule } from '@angular/material/select';
+import { MatTooltipModule } from '@angular/material/tooltip';
 import { AlertaService } from '../../core/services/alerta.service';
 import { PreProtocolosService } from '../../core/services/pre-protocolos.service';
-import { PreProtocolo, STATUS_MACRO_LABELS, StatusPreProtocolo } from '../../core/models';
+import { AnexosService } from '../../core/services/anexos.service';
+import { PreProtocolo, SolicitanteTipo, STATUS_MACRO_LABELS, StatusPreProtocolo } from '../../core/models';
 import { LoadingStateComponent } from '../../shared/components/loading-state/loading-state.component';
 import { EmptyStateComponent } from '../../shared/components/empty-state/empty-state.component';
-import { PdfViewerComponent } from '../../shared/components/pdf-viewer/pdf-viewer.component';
+import { PdfViewerDialogComponent } from '../../shared/components/pdf-viewer-dialog/pdf-viewer-dialog.component';
 import {
   MotivoDialogComponent,
 } from '../detalhe-solicitacao/dialogs/motivo-dialog.component';
@@ -45,10 +48,11 @@ type AbaPreProtocolo = 'ENTRADA' | 'INICIADOS';
     MatIconModule,
     MatInputModule,
     MatPaginatorModule,
+    MatRadioModule,
     MatSelectModule,
+    MatTooltipModule,
     LoadingStateComponent,
     EmptyStateComponent,
-    PdfViewerComponent,
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
   templateUrl: './pre-protocolo-lista.component.html',
@@ -57,6 +61,7 @@ type AbaPreProtocolo = 'ENTRADA' | 'INICIADOS';
 export class PreProtocoloListaComponent implements OnInit {
   private readonly fb = inject(FormBuilder);
   private readonly preProtocolosService = inject(PreProtocolosService);
+  private readonly anexosService = inject(AnexosService);
   private readonly dialog = inject(MatDialog);
   private readonly alerta = inject(AlertaService);
   private readonly router = inject(Router);
@@ -75,6 +80,10 @@ export class PreProtocoloListaComponent implements OnInit {
   readonly page = signal(1);
   readonly pageSize = signal(12);
 
+  /** "Quem está solicitando?" escolhido em cada card sem anexo, antes de enviar o ofício — chave = id do pré-protocolo. */
+  readonly solicitanteEscolhido = signal<Record<string, SolicitanteTipo>>({});
+  readonly enviandoAnexo = signal<Record<string, boolean>>({});
+
   readonly filtros = this.fb.nonNullable.group({
     statusEntrada: 'PENDENTE' as StatusPreProtocolo,
     remetente: '',
@@ -85,6 +94,15 @@ export class PreProtocoloListaComponent implements OnInit {
 
   ngOnInit(): void {
     this.carregar();
+  }
+
+  /** Link do formulário público (sem login) — para a Assessora compartilhar com quem precisa enviar uma solicitação. */
+  copiarLinkPublico(): void {
+    const link = `${window.location.origin}/enviar-solicitacao`;
+    navigator.clipboard
+      .writeText(link)
+      .then(() => this.alerta.sucesso('Link copiado! Já pode compartilhar.'))
+      .catch(() => this.alerta.erro(`Não foi possível copiar automaticamente. Link: ${link}`));
   }
 
   selecionarAba(aba: AbaPreProtocolo): void {
@@ -149,6 +167,61 @@ export class PreProtocoloListaComponent implements OnInit {
 
   converter(preProtocolo: PreProtocolo): void {
     this.router.navigate(['/pre-protocolo', preProtocolo.id, 'converter']);
+  }
+
+  abrirPdf(registro: PreProtocolo): void {
+    if (!registro.anexoOficioId) return;
+    this.dialog.open(PdfViewerDialogComponent, {
+      width: '860px',
+      maxWidth: '95vw',
+      data: {
+        anexoId: registro.anexoOficioId,
+        titulo: registro.assunto,
+        nomeArquivo: 'oficio.pdf',
+      },
+    });
+  }
+
+  escolherSolicitante(preProtocoloId: string, tipo: SolicitanteTipo): void {
+    this.solicitanteEscolhido.update((atual) => ({ ...atual, [preProtocoloId]: tipo }));
+  }
+
+  /** Upload do PDF que faltava no e-mail + registro de quem está solicitando (RN: exigido antes de anexar). */
+  anexarOficio(registro: PreProtocolo, input: HTMLInputElement): void {
+    const arquivo = input.files?.[0];
+    input.value = '';
+    if (!arquivo) return;
+
+    if (arquivo.type !== 'application/pdf') {
+      this.alerta.erro('Selecione um arquivo em formato PDF.');
+      return;
+    }
+    const solicitanteTipo = this.solicitanteEscolhido()[registro.id];
+    if (!solicitanteTipo) {
+      this.alerta.erro('Selecione antes quem está solicitando — Mobilizador ou Presidente do Sindicato Rural.');
+      return;
+    }
+
+    this.enviandoAnexo.update((atual) => ({ ...atual, [registro.id]: true }));
+    this.anexosService.enviar(arquivo, 'OFICIO').subscribe({
+      next: (anexo) => {
+        this.preProtocolosService.anexarOficio(registro.id, { anexoOficioId: anexo.id, solicitanteTipo }).subscribe({
+          next: (atualizado) => {
+            this.registros.update((lista) => lista.map((r) => (r.id === registro.id ? atualizado : r)));
+            this.enviandoAnexo.update((atual) => ({ ...atual, [registro.id]: false }));
+            this.alerta.sucesso('Ofício anexado com sucesso.');
+          },
+          error: () => {
+            this.enviandoAnexo.update((atual) => ({ ...atual, [registro.id]: false }));
+            this.alerta.erro('Não foi possível vincular o ofício ao pré-protocolo.');
+          },
+        });
+      },
+      error: () => {
+        this.enviandoAnexo.update((atual) => ({ ...atual, [registro.id]: false }));
+        this.alerta.erro('Não foi possível enviar o arquivo.');
+      },
+    });
   }
 
   descartar(preProtocolo: PreProtocolo): void {

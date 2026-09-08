@@ -14,10 +14,23 @@ import { MatSelectModule } from '@angular/material/select';
 import { AlertaService } from '../../core/services/alerta.service';
 import { PreProtocolosService } from '../../core/services/pre-protocolos.service';
 import { ParceirosService } from '../../core/services/parceiros.service';
-import { ItemSolicitacao, Parceiro, PreProtocolo, TIPO_ITEM_LABELS, TipoItem } from '../../core/models';
+import { SolicitacoesService } from '../../core/services/solicitacoes.service';
+import { AnexosService } from '../../core/services/anexos.service';
+import { MunicipiosService } from '../../core/services/municipios.service';
+import {
+  ItemSolicitacao,
+  Municipio,
+  Parceiro,
+  PreProtocolo,
+  TIPO_ITEM_LABELS,
+  TipoItem,
+  URGENCIA_LABELS,
+  Urgencia,
+} from '../../core/models';
 import { PdfViewerComponent } from '../../shared/components/pdf-viewer/pdf-viewer.component';
 import { LoadingStateComponent } from '../../shared/components/loading-state/loading-state.component';
 import { CATALOGO_TIPOS_EVENTO } from '../../core/catalogos/catalogo-tipos-evento';
+import { CATALOGO_UF } from '../../core/catalogos/catalogo-uf';
 import {
   ConfirmarAcaoDialogComponent,
 } from '../../shared/components/confirmar-acao-dialog/confirmar-acao-dialog.component';
@@ -57,6 +70,9 @@ export class ConverterPreProtocoloComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly preProtocolosService = inject(PreProtocolosService);
   private readonly parceirosService = inject(ParceirosService);
+  private readonly solicitacoesService = inject(SolicitacoesService);
+  private readonly anexosService = inject(AnexosService);
+  private readonly municipiosService = inject(MunicipiosService);
   private readonly dialog = inject(MatDialog);
   private readonly alerta = inject(AlertaService);
 
@@ -87,6 +103,29 @@ export class ConverterPreProtocoloComponent implements OnInit {
   readonly enviando = signal(false);
   readonly erroEnvio = signal<string | null>(null);
 
+  /**
+   * Sem :id na rota (/protocolar-assessor) — o Assessor está protocolando do zero
+   * em nome de um Parceiro (ex.: ofício recebido em mãos, não por e-mail), em vez
+   * de confirmar um Pré-Protocolo já existente. Muda o que precisa ser carregado,
+   * qual endpoint é chamado ao enviar, e as mensagens da tela.
+   */
+  readonly modoNovo = signal(false);
+
+  /** Ver nota equivalente em ProtocolarOficioComponent: UF pré-selecionada como Goiás, editável. */
+  readonly ufs = CATALOGO_UF;
+  readonly municipios = signal<Municipio[]>([]);
+  readonly carregandoMunicipios = signal(false);
+
+  readonly urgencias: Urgencia[] = ['BAIXA', 'NORMAL', 'ALTA', 'URGENTE'];
+  readonly urgenciaLabels = URGENCIA_LABELS;
+
+  // Upload manual do ofício em PDF — só existe no modo "novo" (no modo
+  // "converter", o PDF já veio junto com o e-mail no Pré-Protocolo).
+  readonly arquivo = signal<File | null>(null);
+  readonly anexoId = signal<string | null>(null);
+  readonly enviandoArquivo = signal(false);
+  readonly erroArquivo = signal<string | null>(null);
+
   readonly documentoForm = this.fb.nonNullable.group({
     parceiroId: ['', Validators.required],
     // 1 Parceiro tem 1 ou mais Mobilizadores — o Assessor precisa escolher em
@@ -96,8 +135,10 @@ export class ConverterPreProtocoloComponent implements OnInit {
     assunto: ['', Validators.required],
     numeroDocumento: [''],
     dataDocumento: [new Date(), Validators.required],
+    uf: ['GO', Validators.required],
     municipio: [''],
     resumoObservacoes: [''],
+    urgencia: ['NORMAL' as Urgencia],
   });
 
   readonly itemForm = this.fb.nonNullable.group({
@@ -151,11 +192,41 @@ export class ConverterPreProtocoloComponent implements OnInit {
     return this.parceiros().find((p) => p.id === id)?.nome ?? '';
   };
 
+  /** Opções de Município da UF selecionada, filtradas pelo texto digitado. */
+  get opcoesMunicipio(): Municipio[] {
+    const filtro = (this.documentoForm.controls.municipio.value || '').trim().toLowerCase();
+    const lista = filtro
+      ? this.municipios().filter((m) => m.nome.toLowerCase().includes(filtro))
+      : this.municipios();
+    return lista.slice(0, LIMITE_OPCOES_AUTOCOMPLETE);
+  }
+
+  private carregarMunicipios(uf: string): void {
+    this.carregandoMunicipios.set(true);
+    this.municipiosService.porUf(uf).subscribe({
+      next: (lista) => {
+        this.municipios.set(lista);
+        this.carregandoMunicipios.set(false);
+      },
+      error: () => {
+        this.municipios.set([]);
+        this.carregandoMunicipios.set(false);
+      },
+    });
+  }
+
   ngOnInit(): void {
-    const id = this.route.snapshot.paramMap.get('id')!;
+    const id = this.route.snapshot.paramMap.get('id');
+    this.modoNovo.set(!id);
 
     this.itemForm.controls.tipoEvento.valueChanges.subscribe(() => {
       this.itemForm.controls.acaoAtividade.setValue('');
+    });
+
+    this.carregarMunicipios(this.documentoForm.controls.uf.value);
+    this.documentoForm.controls.uf.valueChanges.subscribe((uf) => {
+      this.documentoForm.controls.municipio.setValue('');
+      this.carregarMunicipios(uf);
     });
 
     // Trocar o Parceiro invalida o Mobilizador escolhido antes (a lista de
@@ -168,6 +239,11 @@ export class ConverterPreProtocoloComponent implements OnInit {
       next: (pagina) => this.parceiros.set(pagina.data),
       error: () => this.parceiros.set([]),
     });
+
+    if (!id) {
+      this.carregando.set(false);
+      return;
+    }
 
     this.preProtocolosService.buscarPorId(id).subscribe({
       next: (registro) => {
@@ -182,6 +258,40 @@ export class ConverterPreProtocoloComponent implements OnInit {
         this.carregando.set(false);
       },
     });
+  }
+
+  /** Upload manual do ofício em PDF — só usado no modo "novo" (protocolar direto). */
+  selecionarArquivo(evento: Event): void {
+    const input = evento.target as HTMLInputElement;
+    const arquivo = input.files?.[0] ?? null;
+    if (!arquivo) return;
+
+    if (arquivo.type !== 'application/pdf') {
+      this.erroArquivo.set('Selecione um arquivo em formato PDF.');
+      return;
+    }
+
+    this.arquivo.set(arquivo);
+    this.erroArquivo.set(null);
+    this.enviandoArquivo.set(true);
+    this.anexoId.set(null);
+
+    this.anexosService.enviar(arquivo, 'OFICIO').subscribe({
+      next: (anexo) => {
+        this.anexoId.set(anexo.id);
+        this.enviandoArquivo.set(false);
+      },
+      error: () => {
+        this.enviandoArquivo.set(false);
+        this.erroArquivo.set('Não foi possível enviar o ofício. Tente novamente.');
+      },
+    });
+  }
+
+  removerArquivo(): void {
+    this.arquivo.set(null);
+    this.anexoId.set(null);
+    this.erroArquivo.set(null);
   }
 
   adicionarItem(): void {
@@ -296,11 +406,13 @@ export class ConverterPreProtocoloComponent implements OnInit {
   }
 
   cancelar(): void {
+    const novo = this.modoNovo();
     const ref = this.dialog.open(ConfirmarAcaoDialogComponent, {
       data: {
-        titulo: 'Cancelar esta conversão?',
-        mensagem:
-          'As informações preenchidas até agora serão perdidas. O e-mail continua pendente em Pré Protocolo, você pode voltar a convertê-lo depois.',
+        titulo: novo ? 'Cancelar este protocolo?' : 'Cancelar esta conversão?',
+        mensagem: novo
+          ? 'As informações preenchidas até agora serão perdidas.'
+          : 'As informações preenchidas até agora serão perdidas. O e-mail continua pendente em Pré-Protocolo, você pode voltar a convertê-lo depois.',
         rotuloConfirmar: 'Sim, cancelar',
         corConfirmar: 'warn',
         icone: 'delete_outline',
@@ -310,13 +422,14 @@ export class ConverterPreProtocoloComponent implements OnInit {
 
     ref.afterClosed().subscribe((confirmado) => {
       if (confirmado) {
-        this.router.navigate(['/pre-protocolo']);
+        this.router.navigate([novo ? '/painel' : '/pre-protocolo']);
       }
     });
   }
 
   converter(): void {
     this.erroEnvio.set(null);
+    const novo = this.modoNovo();
 
     if (this.documentoForm.invalid) {
       this.documentoForm.markAllAsTouched();
@@ -333,9 +446,15 @@ export class ConverterPreProtocoloComponent implements OnInit {
       this.erroEnvio.set('Selecione em nome de qual Mobilizador este protocolo está sendo gerado.');
       return;
     }
+
     const registro = this.preProtocolo();
-    if (!registro?.anexoOficioId) {
-      this.erroEnvio.set('Este pré-protocolo não tem um PDF anexado — não é possível gerar o protocolo.');
+    const anexoOficioId = novo ? this.anexoId() : registro?.anexoOficioId;
+    if (!anexoOficioId) {
+      this.erroEnvio.set(
+        novo
+          ? 'Anexe o ofício em PDF antes de protocolar.'
+          : 'Este pré-protocolo não tem um PDF anexado — não é possível gerar o protocolo.'
+      );
       return;
     }
     if (this.itens().length === 0) {
@@ -348,10 +467,11 @@ export class ConverterPreProtocoloComponent implements OnInit {
 
     const ref = this.dialog.open(ConfirmarAcaoDialogComponent, {
       data: {
-        titulo: 'Revise antes de gerar o protocolo',
-        mensagem:
-          'Confira se as informações abaixo estão corretas — a partir daqui, o e-mail vira um protocolo de verdade e passa a tramitar como se tivesse sido protocolado pelo próprio Mobilizador/Presidente.',
-        rotuloConfirmar: 'Gerar Protocolo',
+        titulo: novo ? 'Revise antes de protocolar' : 'Revise antes de gerar o protocolo',
+        mensagem: novo
+          ? 'Confira se as informações abaixo estão corretas antes de protocolar em nome deste Parceiro.'
+          : 'Confira se as informações abaixo estão corretas — a partir daqui, o e-mail vira um protocolo de verdade e passa a tramitar como se tivesse sido protocolado pelo próprio Mobilizador/Presidente.',
+        rotuloConfirmar: novo ? 'Protocolar' : 'Gerar Protocolo',
         corConfirmar: 'primary',
         icone: 'fact_check',
         resumo: [
@@ -365,8 +485,11 @@ export class ConverterPreProtocoloComponent implements OnInit {
     });
 
     ref.afterClosed().subscribe((confirmado) => {
-      if (confirmado) {
-        this.enviarConversao(registro.id, registro.anexoOficioId as string, parceiro.id, mobilizadorId, valores);
+      if (!confirmado) return;
+      if (novo) {
+        this.enviarProtocoloNovo(anexoOficioId, parceiro.id, mobilizadorId, valores);
+      } else {
+        this.enviarConversao(registro!.id, anexoOficioId, parceiro.id, mobilizadorId, valores);
       }
     });
   }
@@ -389,6 +512,7 @@ export class ConverterPreProtocoloComponent implements OnInit {
         dataDocumento: valores.dataDocumento.toISOString(),
         municipio: valores.municipio || undefined,
         resumoObservacoes: valores.resumoObservacoes || undefined,
+        urgencia: valores.urgencia,
         anexoOficioId,
         itens: this.itens(),
       })
@@ -401,6 +525,43 @@ export class ConverterPreProtocoloComponent implements OnInit {
         error: () => {
           this.enviando.set(false);
           const mensagem = 'Não foi possível gerar o protocolo. Tente novamente.';
+          this.erroEnvio.set(mensagem);
+          this.alerta.erro(mensagem);
+        },
+      });
+  }
+
+  /** Modo "novo" (/protocolar-assessor) — Assessor protocolando direto em nome de um Parceiro, sem Pré-Protocolo de origem. */
+  private enviarProtocoloNovo(
+    anexoOficioId: string,
+    parceiroId: string,
+    mobilizadorId: string,
+    valores: ReturnType<typeof this.documentoForm.getRawValue>
+  ): void {
+    this.enviando.set(true);
+
+    this.solicitacoesService
+      .criar({
+        parceiroId,
+        mobilizadorId,
+        assunto: valores.assunto,
+        numeroDocumento: valores.numeroDocumento || undefined,
+        dataDocumento: valores.dataDocumento.toISOString(),
+        municipio: valores.municipio || undefined,
+        resumoObservacoes: valores.resumoObservacoes || undefined,
+        urgencia: valores.urgencia,
+        anexoOficioId,
+        itens: this.itens(),
+      })
+      .subscribe({
+        next: (solicitacao) => {
+          this.enviando.set(false);
+          this.alerta.sucesso('Ofício protocolado com sucesso!');
+          this.router.navigate(['/solicitacoes', solicitacao.id]);
+        },
+        error: () => {
+          this.enviando.set(false);
+          const mensagem = 'Não foi possível protocolar o ofício. Tente novamente.';
           this.erroEnvio.set(mensagem);
           this.alerta.erro(mensagem);
         },

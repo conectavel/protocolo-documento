@@ -100,7 +100,7 @@ export class ShellComponent {
     {
       rota: '/pre-protocolo',
       icone: 'mark_email_unread',
-      rotulo: 'Pré Protocolo',
+      rotulo: 'Pré-Protocolo',
       somentePapeis: ['ASSESSOR', 'ADMIN'],
     },
     {

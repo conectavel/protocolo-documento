@@ -10,12 +10,17 @@ export interface PreProtocoloSolicitacaoGerada {
   statusMacro: StatusMacro;
 }
 
+export type SolicitanteTipo = 'MOBILIZADOR' | 'PRESIDENTE';
+export type OrigemPreProtocolo = 'EMAIL' | 'FORMULARIO_PUBLICO';
+
 export interface PreProtocolo {
   id: string;
   remetente: string;
   assunto: string;
   corpo?: string;
   anexoOficioId?: string;
+  solicitanteTipo?: SolicitanteTipo | null;
+  origem: OrigemPreProtocolo;
   status: StatusPreProtocolo;
   solicitacaoGeradaId?: string;
   solicitacaoGerada?: PreProtocoloSolicitacaoGerada | null;
@@ -41,3 +46,15 @@ export interface PaginaPreProtocolos {
   page: number;
   pageSize: number;
 }
+
+/** Resposta da busca por CPF no formulário público — usada para pré-preencher a partir de um envio anterior. */
+export type BuscaDadosPorCpf =
+  | { encontrado: false }
+  | {
+      encontrado: true;
+      nome: string;
+      email: string;
+      telefone: string | null;
+      telefoneWhatsapp: boolean;
+      dataNascimento: string | null;
+    };

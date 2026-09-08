@@ -1,0 +1,155 @@
+<div class="envio-publico-page">
+  <div class="envio-publico-card">
+    <div class="envio-publico-card__marca">
+      <img src="assets/branding/senar-logo-verde.svg" alt="SENAR" />
+      <div>
+        <h1>Enviar uma Solicitação</h1>
+        <p>e-Senar / FAEG — sem necessidade de login</p>
+      </div>
+    </div>
+
+    @if (enviado()) {
+      <div class="envio-publico-sucesso">
+        <mat-icon>check_circle</mat-icon>
+        <h2>Solicitação enviada!</h2>
+        <p>
+          Recebemos sua solicitação e ela será analisada pela nossa equipe em breve.
+          Se você anexou um ofício, ele já está registrado junto com o pedido.
+        </p>
+        <a mat-flat-button color="primary" routerLink="/login">Voltar ao início</a>
+      </div>
+    } @else {
+      <p class="envio-publico-intro">
+        Preencha os dados abaixo para enviar uma solicitação de curso, patrocínio, item ou
+        convite. Nossa equipe vai analisar e entrar em contato se precisar de mais informações.
+      </p>
+
+      <form [formGroup]="form" class="envio-publico-form" (ngSubmit)="enviar()">
+        <mat-form-field appearance="outline">
+          <mat-label>CPF</mat-label>
+          <input
+            matInput
+            inputmode="numeric"
+            formControlName="cpf"
+            placeholder="Somente números"
+            maxlength="11"
+            (input)="aoDigitarCpf($event)"
+          />
+          @if (buscandoCpf()) {
+            <mat-spinner matSuffix diameter="18"></mat-spinner>
+          } @else if (cpfReconhecido()) {
+            <mat-icon matSuffix matTooltip="Já identificamos seus dados de um envio anterior" class="envio-publico-cpf-ok"
+              >check_circle</mat-icon
+            >
+          }
+          @if (form.controls.cpf.touched && form.controls.cpf.hasError('required')) {
+            <mat-error>Informe seu CPF.</mat-error>
+          } @else if (form.controls.cpf.touched && form.controls.cpf.hasError('pattern')) {
+            <mat-error>Informe um CPF válido com 11 dígitos.</mat-error>
+          }
+          <mat-hint>Usamos para localizar um envio seu anterior e adiantar o preenchimento — se não achar, é só continuar.</mat-hint>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Seu nome</mat-label>
+          <input matInput formControlName="nome" />
+          @if (form.controls.nome.touched && form.controls.nome.hasError('required')) {
+            <mat-error>Informe seu nome.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Data de nascimento</mat-label>
+          <input matInput type="date" formControlName="dataNascimento" />
+          @if (form.controls.dataNascimento.touched && form.controls.dataNascimento.hasError('required')) {
+            <mat-error>Informe sua data de nascimento.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Telefone</mat-label>
+          <input
+            matInput
+            inputmode="numeric"
+            formControlName="telefone"
+            placeholder="DDD + número"
+            maxlength="11"
+            (input)="aoDigitarTelefone($event)"
+          />
+          @if (form.controls.telefone.touched && form.controls.telefone.hasError('required')) {
+            <mat-error>Informe seu telefone.</mat-error>
+          } @else if (form.controls.telefone.touched && form.controls.telefone.hasError('pattern')) {
+            <mat-error>Informe um telefone válido com DDD.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-checkbox formControlName="telefoneWhatsapp" class="envio-publico-whatsapp">
+          Este telefone é WhatsApp
+        </mat-checkbox>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Seu e-mail</mat-label>
+          <input matInput type="email" formControlName="email" placeholder="para retornarmos contato" />
+          @if (form.controls.email.touched && form.controls.email.invalid) {
+            <mat-error>Informe um e-mail válido.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Assunto</mat-label>
+          <input matInput formControlName="assunto" placeholder="Ex.: Solicitação de curso de Bovinocultura" />
+          @if (form.controls.assunto.touched && form.controls.assunto.hasError('required')) {
+            <mat-error>Informe o assunto.</mat-error>
+          }
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Mensagem</mat-label>
+          <textarea matInput rows="4" formControlName="mensagem" placeholder="Detalhe o que você precisa"></textarea>
+          @if (form.controls.mensagem.touched && form.controls.mensagem.hasError('required')) {
+            <mat-error>Descreva o que você precisa.</mat-error>
+          }
+        </mat-form-field>
+
+        <div class="envio-publico-upload">
+          <span class="envio-publico-upload__rotulo">Ofício em PDF (opcional)</span>
+          @if (!arquivo()) {
+            <label class="envio-publico-upload__botao">
+              <mat-icon>attach_file</mat-icon>
+              Selecionar PDF
+              <input type="file" accept="application/pdf" hidden (change)="selecionarArquivo($event)" />
+            </label>
+          } @else {
+            <div class="envio-publico-upload__arquivo">
+              <mat-icon>description</mat-icon>
+              <span>{{ arquivo()!.name }}</span>
+              <button mat-icon-button type="button" (click)="removerArquivo()">
+                <mat-icon>close</mat-icon>
+              </button>
+            </div>
+          }
+          @if (erroArquivo()) {
+            <p class="envio-publico-erro">{{ erroArquivo() }}</p>
+          }
+        </div>
+
+        @if (erro()) {
+          <p class="envio-publico-erro">{{ erro() }}</p>
+        }
+
+        <button mat-flat-button color="primary" type="submit" class="envio-publico-enviar" [disabled]="enviando()">
+          @if (enviando()) {
+            <mat-spinner diameter="22" color="accent"></mat-spinner>
+          } @else {
+            <span>Enviar solicitação</span>
+          }
+        </button>
+      </form>
+
+      <a class="envio-publico-voltar" routerLink="/login">
+        <mat-icon>arrow_back</mat-icon>
+        Já tenho uma conta — voltar ao login
+      </a>
+    }
+  </div>
+</div>

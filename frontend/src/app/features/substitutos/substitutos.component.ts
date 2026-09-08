@@ -117,14 +117,19 @@ export class SubstitutosComponent implements OnInit {
     });
   }
 
-  remover(substituicao: Substituicao): void {
-    if (!confirm(`Remover a substituição de ${substituicao.usuarioSubstituidoNome}?`)) return;
-    this.substituicoesService.remover(substituicao.id).subscribe({
+  encerrar(substituicao: Substituicao): void {
+    if (
+      !confirm(
+        `Encerrar agora a substituição de ${substituicao.usuarioSubstituidoNome}? O registro permanece salvo para consulta futura, apenas deixa de valer a partir de agora.`,
+      )
+    )
+      return;
+    this.substituicoesService.encerrar(substituicao.id).subscribe({
       next: () => {
-        this.snackBar.open('Substituto removido.', 'Ok', { duration: 3000 });
+        this.snackBar.open('Substituição encerrada.', 'Ok', { duration: 3000 });
         this.carregar();
       },
-      error: () => this.snackBar.open('Não foi possível remover.', 'Ok', { duration: 4000 }),
+      error: (erro) => this.snackBar.open(erro?.error?.message ?? 'Não foi possível encerrar.', 'Ok', { duration: 4000 }),
     });
   }
 }

@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtAuthGuard, UsuarioAutenticado } from '../../common/guards/jwt-auth.guard';
@@ -27,7 +27,7 @@ export class SubstituicoesController {
       where: { ativo: true, ...(papel ? { papel } : {}) },
       order: { nome: 'ASC' },
     });
-    return usuarios.map((u) => ({ id: u.id, nome: u.nome, email: u.email, papel: u.papel }));
+    return usuarios.map((u) => ({ id: u.id, nome: u.nome, email: u.email, papel: u.papel, departamento: u.departamento }));
   }
 
   @Get('substituicoes')
@@ -45,8 +45,8 @@ export class SubstituicoesController {
     return this.substituicoesService.atualizar(id, dto);
   }
 
-  @Delete('substituicoes/:id')
-  remover(@Param('id') id: string) {
-    return this.substituicoesService.remover(id);
+  @Post('substituicoes/:id/encerrar')
+  encerrar(@Param('id') id: string, @UsuarioAtual() usuario: UsuarioAutenticado) {
+    return this.substituicoesService.encerrar(id, usuario);
   }
 }

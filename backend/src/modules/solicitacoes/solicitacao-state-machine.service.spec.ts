@@ -4,6 +4,7 @@ import { SolicitacaoStateMachineService } from './solicitacao-state-machine.serv
 import { Solicitacao } from './entities/solicitacao.entity';
 import { ItemSolicitacao } from './entities/item-solicitacao.entity';
 import { Tramitacao } from './entities/tramitacao.entity';
+import { AssinaturaDigital } from './entities/assinatura-digital.entity';
 import { Devolutiva } from '../devolutivas/entities/devolutiva.entity';
 import { FakeRepository } from '../../test-utils/fake-repository';
 import {
@@ -40,6 +41,7 @@ describe('SolicitacaoStateMachineService', () => {
   let solicitacaoRepo: FakeRepository<Solicitacao>;
   let itemRepo: FakeRepository<ItemSolicitacao>;
   let tramitacaoRepo: FakeRepository<Tramitacao>;
+  let assinaturaRepo: FakeRepository<AssinaturaDigital>;
   let devolutivaRepo: FakeRepository<Devolutiva>;
   const notificacoesFake = {
     notificarAssessoria: jest.fn().mockResolvedValue(undefined),
@@ -56,12 +58,14 @@ describe('SolicitacaoStateMachineService', () => {
     solicitacaoRepo = new FakeRepository<Solicitacao>();
     itemRepo = new FakeRepository<ItemSolicitacao>();
     tramitacaoRepo = new FakeRepository<Tramitacao>();
+    assinaturaRepo = new FakeRepository<AssinaturaDigital>();
     devolutivaRepo = new FakeRepository<Devolutiva>();
 
     service = new SolicitacaoStateMachineService(
       solicitacaoRepo as any,
       itemRepo as any,
       tramitacaoRepo as any,
+      assinaturaRepo as any,
       devolutivaRepo as any,
       notificacoesFake as any,
     );

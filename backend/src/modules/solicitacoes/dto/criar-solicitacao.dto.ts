@@ -12,7 +12,7 @@ import {
   Min,
   ValidateNested,
 } from 'class-validator';
-import { TipoItem, Turno } from '../../../common/enums/solicitacao.enum';
+import { TipoItem, Turno, Urgencia } from '../../../common/enums/solicitacao.enum';
 
 export class CriarItemSolicitacaoDto {
   @IsEnum(TipoItem)
@@ -50,6 +50,7 @@ export class CriarSolicitacaoDto {
   @IsOptional() @IsString() numeroDocumento?: string;
   @IsISO8601() dataDocumento: string;
   @IsOptional() @IsString() resumoObservacoes?: string;
+  @IsOptional() @IsEnum(Urgencia) urgencia?: Urgencia;
 
   @IsUUID() anexoOficioId: string;
 

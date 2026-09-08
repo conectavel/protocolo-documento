@@ -26,7 +26,7 @@ export class SubstituicoesService {
     return this.http.put<Substituicao>(`${this.baseUrl}/usuarios/substituicoes/${id}`, dto);
   }
 
-  remover(id: string): Observable<void> {
-    return this.http.delete<void>(`${this.baseUrl}/usuarios/substituicoes/${id}`);
+  encerrar(id: string): Observable<Substituicao> {
+    return this.http.post<Substituicao>(`${this.baseUrl}/usuarios/substituicoes/${id}/encerrar`, {});
   }
 }

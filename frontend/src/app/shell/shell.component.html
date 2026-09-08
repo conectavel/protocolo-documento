@@ -76,10 +76,15 @@
 
       <mat-menu #menuUsuario="matMenu">
         <div class="shell-header__menu-info">
-          <strong>{{ usuario()?.nome }}</strong>
+          <span class="shell-header__menu-info-rotulo">Logado como</span>
+          <strong>{{ usuario()?.email }}</strong>
           <span>{{ papelLabel() }}</span>
         </div>
-        <button mat-menu-item (click)="sair()">
+        <a mat-menu-item routerLink="/configuracoes">
+          <mat-icon class="shell-header__menu-icon shell-header__menu-icon--verde">manage_accounts</mat-icon>
+          <span>Perfil / Configurações</span>
+        </a>
+        <button mat-menu-item class="shell-header__menu-sair" (click)="sair()">
           <mat-icon>logout</mat-icon>
           <span>Sair</span>
         </button>

@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 import {
   AnaliseAssessoriaRequest,
   AnexoProcesso,
+  Contadores,
   CriarSolicitacaoRequest,
   DesignarCoordenadorRequest,
   DespachoSuperintendenteRequest,
@@ -36,6 +37,11 @@ export class SolicitacoesService {
 
   buscarPorId(id: string): Observable<Solicitacao> {
     return this.http.get<Solicitacao>(`${this.baseUrl}/solicitacoes/${id}`);
+  }
+
+  /** Selos das abas do Painel de Ofícios — total por status + "Meus Pendentes". */
+  contadores(): Observable<Contadores> {
+    return this.http.get<Contadores>(`${this.baseUrl}/solicitacoes/contadores`);
   }
 
   criar(payload: CriarSolicitacaoRequest): Observable<Solicitacao> {

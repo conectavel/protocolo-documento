@@ -1,43 +1,87 @@
 <div class="po-page-header">
   <h1 class="po-page-title">
-    <mat-icon>fact_check</mat-icon>
-    Converter Pré Protocolo
+    <mat-icon>{{ modoNovo() ? 'add_circle' : 'fact_check' }}</mat-icon>
+    {{ modoNovo() ? 'Novo Protocolo' : 'Converter Pré-Protocolo' }}
   </h1>
   <p class="po-page-subtitle">
     <mat-icon>info</mat-icon>
-    Confirme o Parceiro/Mobilizador e detalhe os itens a partir do e-mail recebido.
+    @if (modoNovo()) {
+      Registre um ofício recebido em mãos, em nome de um Parceiro/Sindicato Rural.
+    } @else {
+      Confirme o Parceiro/Mobilizador e detalhe os itens a partir do e-mail recebido.
+    }
   </p>
 </div>
 
 @if (carregando()) {
-  <app-loading-state mensagem="Carregando pré-protocolo…"></app-loading-state>
-} @else if (!preProtocolo()) {
+  <app-loading-state mensagem="Carregando…"></app-loading-state>
+} @else if (!modoNovo() && !preProtocolo()) {
   <p class="po-hint po-hint--erro">Pré-protocolo não encontrado.</p>
 } @else {
-  <div class="po-card">
-    <div class="po-card-section-title">
-      <span>
-        <mat-icon>mark_email_unread</mat-icon>
-        E-mail original
-      </span>
-      <a mat-stroked-button color="primary" [href]="linkResponderEmail()">
-        <mat-icon>reply</mat-icon>
-        Responder por e-mail
-      </a>
+  @if (modoNovo()) {
+    <div class="po-card">
+      <div class="po-card-section-title">
+        <span>
+          <mat-icon>picture_as_pdf</mat-icon>
+          Ofício (PDF)
+        </span>
+      </div>
+      <div class="po-divider-gradient"></div>
+
+      @if (!anexoId()) {
+        <div class="po-upload">
+          <label class="po-upload__botao">
+            <mat-icon>cloud_upload</mat-icon>
+            Selecionar arquivo
+            <input type="file" accept="application/pdf" (change)="selecionarArquivo($event)" hidden />
+          </label>
+
+          @if (enviandoArquivo()) {
+            <span class="po-upload__status">
+              <mat-spinner diameter="18"></mat-spinner>
+              Enviando ofício…
+            </span>
+          }
+        </div>
+      } @else {
+        <app-pdf-viewer
+          [anexoId]="anexoId()!"
+          [nomeArquivo]="arquivo()?.name ?? 'ofício.pdf'"
+          [podeRemover]="true"
+          altura="360px"
+          (remover)="removerArquivo()"
+        ></app-pdf-viewer>
+      }
+      @if (erroArquivo()) {
+        <p class="po-hint po-hint--erro">{{ erroArquivo() }}</p>
+      }
     </div>
-    <div class="po-divider-gradient"></div>
-    <p class="po-hint">
-      De: <strong>{{ preProtocolo()?.remetente }}</strong> · Recebido em
-      {{ preProtocolo()?.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}
-    </p>
-    @if (preProtocolo()?.anexoOficioId) {
-      <app-pdf-viewer
-        [anexoId]="preProtocolo()!.anexoOficioId!"
-        nomeArquivo="oficio.pdf"
-        altura="320px"
-      ></app-pdf-viewer>
-    }
-  </div>
+  } @else {
+    <div class="po-card">
+      <div class="po-card-section-title">
+        <span>
+          <mat-icon>mark_email_unread</mat-icon>
+          E-mail original
+        </span>
+        <a mat-stroked-button color="primary" [href]="linkResponderEmail()">
+          <mat-icon>reply</mat-icon>
+          Responder por e-mail
+        </a>
+      </div>
+      <div class="po-divider-gradient"></div>
+      <p class="po-hint">
+        De: <strong>{{ preProtocolo()?.remetente }}</strong> · Recebido em
+        {{ preProtocolo()?.recebidoEm | date: 'dd/MM/yyyy HH:mm' }}
+      </p>
+      @if (preProtocolo()?.anexoOficioId) {
+        <app-pdf-viewer
+          [anexoId]="preProtocolo()!.anexoOficioId!"
+          nomeArquivo="oficio.pdf"
+          altura="320px"
+        ></app-pdf-viewer>
+      }
+    </div>
+  }
 
   <div class="po-card">
     <div class="po-card-section-title">Identificação do Solicitante</div>
@@ -87,20 +131,53 @@
         <mat-label>Assunto</mat-label>
         <input matInput formControlName="assunto" />
       </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Nº do Documento</mat-label>
-        <input matInput formControlName="numeroDocumento" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Município</mat-label>
-        <input matInput formControlName="municipio" />
-      </mat-form-field>
-      <mat-form-field appearance="outline">
-        <mat-label>Data do Documento</mat-label>
-        <input matInput [matDatepicker]="pickerDoc" formControlName="dataDocumento" />
-        <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
-        <mat-datepicker #pickerDoc></mat-datepicker>
-      </mat-form-field>
+      <div class="po-field-full po-grid-doc">
+        <mat-form-field appearance="outline">
+          <mat-label>Nº do Documento</mat-label>
+          <input matInput formControlName="numeroDocumento" />
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>UF</mat-label>
+          <mat-select formControlName="uf">
+            @for (uf of ufs; track uf.sigla) {
+              <mat-option [value]="uf.sigla">{{ uf.sigla }} — {{ uf.nome }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Município</mat-label>
+          <input
+            matInput
+            formControlName="municipio"
+            [matAutocomplete]="autoMunicipio"
+            [placeholder]="carregandoMunicipios() ? 'Carregando cidades…' : ''"
+          />
+          @if (carregandoMunicipios()) {
+            <mat-spinner matSuffix diameter="18"></mat-spinner>
+          }
+          <mat-autocomplete #autoMunicipio="matAutocomplete">
+            @for (opcao of opcoesMunicipio; track opcao.id) {
+              <mat-option [value]="opcao.nome">{{ opcao.nome }}</mat-option>
+            }
+          </mat-autocomplete>
+        </mat-form-field>
+        <mat-form-field appearance="outline">
+          <mat-label>Data do Documento</mat-label>
+          <input matInput [matDatepicker]="pickerDoc" formControlName="dataDocumento" />
+          <mat-datepicker-toggle matIconSuffix [for]="pickerDoc"></mat-datepicker-toggle>
+          <mat-datepicker #pickerDoc></mat-datepicker>
+        </mat-form-field>
+
+        <mat-form-field appearance="outline">
+          <mat-label>Urgência</mat-label>
+          <mat-select formControlName="urgencia">
+            @for (opcao of urgencias; track opcao) {
+              <mat-option [value]="opcao">{{ urgenciaLabels[opcao] }}</mat-option>
+            }
+          </mat-select>
+        </mat-form-field>
+      </div>
       <mat-form-field appearance="outline" class="po-field-full">
         <mat-label>Resumo / Observações</mat-label>
         <textarea matInput rows="3" formControlName="resumoObservacoes"></textarea>
@@ -272,7 +349,7 @@
       @if (enviando()) {
         <mat-spinner diameter="24" color="accent"></mat-spinner>
       } @else {
-        <span>Gerar Protocolo</span>
+        <span>{{ modoNovo() ? 'Protocolar' : 'Gerar Protocolo' }}</span>
       }
     </button>
   </div>

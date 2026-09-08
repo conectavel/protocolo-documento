@@ -15,9 +15,13 @@
       type="button"
       class="po-tabs__item"
       [class.po-tabs__item--active]="abaAtiva() === aba.chave"
+      [class.po-tabs__item--principal]="aba.chave === 'MEUS_PENDENTES'"
       (click)="selecionarAba(aba.chave)"
     >
       {{ aba.rotulo }}
+      @if (contadorDaAba(aba.chave); as total) {
+        <span class="po-tabs__contador">{{ total }}</span>
+      }
     </button>
   }
 </div>
@@ -61,34 +65,52 @@
       </mat-select>
     </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Ação/Atividade</mat-label>
-      <input matInput formControlName="acaoAtividade" />
-    </mat-form-field>
+    <div class="po-field-full po-grid-filtros-avancados">
+      <mat-form-field appearance="outline">
+        <mat-label>Ação/Atividade</mat-label>
+        <input matInput formControlName="acaoAtividade" />
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Disciplina</mat-label>
-      <input matInput formControlName="disciplina" />
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Disciplina</mat-label>
+        <input matInput formControlName="disciplina" />
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Nº do Documento</mat-label>
-      <input matInput formControlName="numeroDocumento" />
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Nº do Documento</mat-label>
+        <input matInput formControlName="numeroDocumento" />
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Período — início</mat-label>
-      <input matInput [matDatepicker]="pickerInicio" formControlName="dataInicio" />
-      <mat-datepicker-toggle matIconSuffix [for]="pickerInicio"></mat-datepicker-toggle>
-      <mat-datepicker #pickerInicio></mat-datepicker>
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Id Documento</mat-label>
+        <input matInput formControlName="numeroProcesso" placeholder="Ex.: 20260902001" />
+        <mat-icon matPrefix matTooltip="Nº de Processo gerado pelo sistema">tag</mat-icon>
+      </mat-form-field>
 
-    <mat-form-field appearance="outline">
-      <mat-label>Período — fim</mat-label>
-      <input matInput [matDatepicker]="pickerFim" formControlName="dataFim" />
-      <mat-datepicker-toggle matIconSuffix [for]="pickerFim"></mat-datepicker-toggle>
-      <mat-datepicker #pickerFim></mat-datepicker>
-    </mat-form-field>
+      <mat-form-field appearance="outline">
+        <mat-label>Período — início</mat-label>
+        <input matInput [matDatepicker]="pickerInicio" formControlName="dataInicio" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerInicio"></mat-datepicker-toggle>
+        <mat-datepicker #pickerInicio></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Período — fim</mat-label>
+        <input matInput [matDatepicker]="pickerFim" formControlName="dataFim" />
+        <mat-datepicker-toggle matIconSuffix [for]="pickerFim"></mat-datepicker-toggle>
+        <mat-datepicker #pickerFim></mat-datepicker>
+      </mat-form-field>
+
+      <mat-form-field appearance="outline">
+        <mat-label>Urgência</mat-label>
+        <mat-select formControlName="urgencia">
+          <mat-option value="">Todas</mat-option>
+          @for (opcao of urgencias; track opcao) {
+            <mat-option [value]="opcao">{{ urgenciaLabels[opcao] }}</mat-option>
+          }
+        </mat-select>
+      </mat-form-field>
+    </div>
   </form>
 
   <div class="po-filtros__rodape">
@@ -136,6 +158,18 @@
       Protocolar Ofício
     </a>
   }
+  @if (ehAssessor()) {
+    <a
+      mat-flat-button
+      color="primary"
+      class="po-search-row__botao-protocolar"
+      routerLink="/protocolar-assessor"
+      matTooltip="Registrar um ofício recebido em mãos, em nome de um Parceiro"
+    >
+      <mat-icon>add</mat-icon>
+      Novo Protocolo
+    </a>
+  }
 </div>
 
 @if (carregando()) {
@@ -154,15 +188,6 @@
         <div class="po-list-card__header">
           <mat-icon class="po-list-card__title-icon">description</mat-icon>
           <span class="po-list-card__title">{{ solicitacao.assunto }}</span>
-          @if (solicitacao.emailRemetenteOrigem) {
-            <span
-              class="po-chip po-chip--info po-list-card__origem-email"
-              [matTooltip]="'Recebido por e-mail de ' + solicitacao.emailRemetenteOrigem"
-            >
-              <mat-icon>mark_email_unread</mat-icon>
-              E-mail
-            </span>
-          }
 
           <button
             mat-icon-button
@@ -179,12 +204,37 @@
               </a>
             </div>
           </mat-menu>
+
+          <div class="po-list-card__origem-linha">
+            @if (solicitacao.emailRemetenteOrigem) {
+              <span
+                class="po-chip po-chip--info po-list-card__origem-email"
+                [matTooltip]="'Recebido por e-mail de ' + solicitacao.emailRemetenteOrigem"
+              >
+                <mat-icon>mark_email_unread</mat-icon>
+                E-mail
+              </span>
+            } @else {
+              <span class="po-chip po-chip--neutral po-list-card__origem-email" matTooltip="Protocolado diretamente no sistema">
+                <mat-icon>computer</mat-icon>
+                Sistema
+              </span>
+            }
+            @if (solicitacao.urgencia) {
+              <span class="po-chip" [class]="'po-chip--' + chipTomUrgencia(solicitacao.urgencia)" matTooltip="Classificação de urgência">
+                <mat-icon>priority_high</mat-icon>
+                {{ urgenciaLabels[solicitacao.urgencia] }}
+              </span>
+            }
+          </div>
         </div>
 
         @if (solicitacao.numeroProcesso) {
-          <div class="po-list-card__numero-processo">
-            <mat-icon>tag</mat-icon>
-            Nº {{ solicitacao.numeroProcesso }}
+          <div class="po-list-card__badges">
+            <div class="po-list-card__numero-processo">
+              <mat-icon>tag</mat-icon>
+              Nº {{ solicitacao.numeroProcesso }}
+            </div>
           </div>
         }
 
@@ -336,13 +386,38 @@
   </div>
 }
 
-<mat-paginator
-  class="po-paginator"
-  [length]="total()"
-  [pageSize]="pageSize()"
-  [pageIndex]="page() - 1"
-  [pageSizeOptions]="[5, 10, 20]"
-  [showFirstLastButtons]="true"
-  (page)="aoMudarPagina($event)"
->
-</mat-paginator>
+<div class="po-paginator-linha">
+  <div class="po-paginator-linha__urgencias">
+    <span class="po-paginator-linha__rotulo">Urgência:</span>
+    <button
+      type="button"
+      class="po-urgencia-chip po-chip po-chip--neutral"
+      [class.po-urgencia-chip--ativo]="!filtros.controls.urgencia.value"
+      (click)="selecionarUrgencia('')"
+    >
+      Todas
+    </button>
+    @for (opcao of urgencias; track opcao) {
+      <button
+        type="button"
+        class="po-urgencia-chip po-chip"
+        [class]="'po-chip po-urgencia-chip po-chip--' + chipTomUrgencia(opcao)"
+        [class.po-urgencia-chip--ativo]="filtros.controls.urgencia.value === opcao"
+        (click)="selecionarUrgencia(opcao)"
+      >
+        {{ urgenciaLabels[opcao] }}
+      </button>
+    }
+  </div>
+
+  <mat-paginator
+    class="po-paginator"
+    [length]="total()"
+    [pageSize]="pageSize()"
+    [pageIndex]="page() - 1"
+    [pageSizeOptions]="[5, 10, 20]"
+    [showFirstLastButtons]="true"
+    (page)="aoMudarPagina($event)"
+  >
+  </mat-paginator>
+</div>

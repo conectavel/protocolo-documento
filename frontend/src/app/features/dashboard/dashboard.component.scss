@@ -7,6 +7,32 @@
     gap: 16px;
     flex-wrap: wrap;
   }
+
+  // Larguras proporcionais entre os filtros — Parceiro precisa de bem mais
+  // espaço (nomes de sindicato costumam ser longos) do que uma data curta
+  // (dd/mm/aaaa); Regional/Mobilizador ficam no meio do caminho. Base de
+  // referência: ~160px (largura natural de um mat-form-field sem classe).
+  &__campo--data {
+    width: 170px;
+  }
+
+  &__campo--parceiro {
+    width: 520px;
+  }
+
+  &__campo--regional,
+  &__campo--mobilizador {
+    width: 320px;
+  }
+
+  @media (max-width: 960px) {
+    &__campo--data,
+    &__campo--parceiro,
+    &__campo--regional,
+    &__campo--mobilizador {
+      width: 100%;
+    }
+  }
 }
 
 .po-dash-kpis {
@@ -40,6 +66,19 @@
     .po-dash-kpi__valor {
       color: #ffffff;
     }
+  }
+
+  // Fundo pastel colorido por tile (menos o de destaque) — visual mais vivo,
+  // igual ao padrão de cards de KPI do Feira com o Senar.
+  &:not(&--destaque) {
+    border: none;
+
+    &:nth-of-type(6n + 2) { background: var(--chip-success-bg); }
+    &:nth-of-type(6n + 3) { background: var(--chip-warning-bg); }
+    &:nth-of-type(6n + 4) { background: var(--chip-neutral-bg); }
+    &:nth-of-type(6n + 5) { background: var(--chip-info-bg); }
+    &:nth-of-type(6n + 0) { background: var(--chip-purple-bg); }
+    &:nth-of-type(6n + 1) { background: var(--chip-cyan-bg); }
   }
 
   &__rotulo {
