@@ -80,3 +80,52 @@ Page reload sent to client(s).
 Application bundle generation complete. [0.515 seconds]
 
 Page reload sent to client(s).
+[33m❯[39m Changes detected. Rebuilding...
+[32m✔[39m Changes detected. Rebuilding...
+[1mInitial chunk files[22m[2m | [22m[1mNames[22m                            [2m | [22m [1mRaw size[22m
+[32mmain.js[39m            [2m | [22m[2mmain[22m                             [2m | [22m  [36m7.21 kB[39m[2m | [22m
+
+[1mLazy chunk files[22m   [2m | [22m[1mNames[22m                            [2m | [22m [1mRaw size[22m
+[32mchunk-TKGX7RNM.js[39m  [2m | [22m[2mdetalhe-solicitacao-component[22m    [2m | [22m[36m147.88 kB[39m[2m | [22m
+[32mchunk-P4YM43EU.js[39m  [2m | [22m[2mprotocolar-oficio-component[22m      [2m | [22m [36m66.60 kB[39m[2m | [22m
+[32mchunk-65FYT23H.js[39m  [2m | [22m[2mgerenciar-usuarios-component[22m     [2m | [22m [36m66.01 kB[39m[2m | [22m
+[32mchunk-3PEWSUWL.js[39m  [2m | [22m[2mconverter-pre-protocolo-component[22m[2m | [22m [36m50.90 kB[39m[2m | [22m
+[32mchunk-QCXH5M2D.js[39m  [2m | [22m[2mpainel-oficios-component[22m         [2m | [22m [36m50.77 kB[39m[2m | [22m
+[32mchunk-YG4VVVEM.js[39m  [2m | [22m[2mdashboard-component[22m              [2m | [22m [36m37.31 kB[39m[2m | [22m
+[32mchunk-A6KM4YJC.js[39m  [2m | [22m[2mlogin-component[22m                  [2m | [22m [36m31.05 kB[39m[2m | [22m
+[32mchunk-SAF6MTTI.js[39m  [2m | [22m[2mpre-protocolo-lista-component[22m    [2m | [22m [36m27.12 kB[39m[2m | [22m
+[32mchunk-CPBSGEGX.js[39m  [2m | [22m[2msubstitutos-component[22m            [2m | [22m [36m26.40 kB[39m[2m | [22m
+[32mchunk-KRJGLXBU.js[39m  [2m | [22m[2mshell-component[22m                  [2m | [22m [36m24.89 kB[39m[2m | [22m
+[32mchunk-BGOXBMVS.js[39m  [2m | [22m[2m-[22m                                [2m | [22m  [36m6.22 kB[39m[2m | [22m
+[32mchunk-5N4XCOA6.js[39m  [2m | [22m[2m-[22m                                [2m | [22m  [36m2.43 kB[39m[2m | [22m
+
+Application bundle generation complete. [1.613 seconds]
+
+Page reload sent to client(s).
+[1m[31m[2m20:10:46[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/usuarios/me/preferencias-notificacao[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:10:50[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=PENDENTE&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:10:54[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=PENDENTE&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:10:58[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=CONVERTIDO&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:10:59[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=PENDENTE&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:13:10[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=PENDENTE&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:13:13[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=CONVERTIDO&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:13:14[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=PENDENTE&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m
+[1m[31m[2m20:13:14[22m[1m [31m[1m[vite][22m[1m[31m [31mhttp proxy error: /api/pre-protocolos?status=CONVERTIDO&page=1&pageSize=12[31m
+Error: connect ECONNREFUSED ::1:3000
+    at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1615:16)[39m[22m

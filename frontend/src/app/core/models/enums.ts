@@ -85,7 +85,7 @@ export const PAPEL_LABELS: Record<Papel, string> = {
   COORDENADOR_REGIONAL: 'Coordenador Regional',
   ASSESSOR: 'Assessor(a) do Superintendente',
   SUPERINTENDENTE: 'Superintendente',
-  DIRETOR_EDUCACIONAL: 'Diretor(a) Educacional',
+  DIRETOR_EDUCACIONAL: 'Diretor(a)',
   GESTOR: 'Gestor(a) de Área/Programa',
   COORDENADOR: 'Coordenador(a) da Ação/Programa',
   ADMIN: 'Administrador(a)',

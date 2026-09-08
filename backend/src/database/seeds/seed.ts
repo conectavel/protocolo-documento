@@ -928,25 +928,36 @@ async function seed() {
       papel: Papel.SUPERINTENDENTE,
     }),
   );
-  const diretorEducacional = await usuarioRepo.save(
-    usuarioRepo.create({
-      nome: 'Diretor Educacional',
-      email: 'diretor.educacional@senar-go.com.br',
-      senhaHash: senhaPadrao,
-      papel: Papel.DIRETOR_EDUCACIONAL,
-    }),
-  );
-  // Segundo Diretor — o Superintendente pode designar mais de um Diretor
-  // responsável por uma mesma solicitação (HU04), cada um encaminhando os
-  // itens do time dele; precisa de pelo menos 2 usuários para testar a seleção.
-  const diretorEducacional2 = await usuarioRepo.save(
-    usuarioRepo.create({
-      nome: 'Patrícia Nogueira',
-      email: 'patricia.nogueira@senar-go.com.br',
-      senhaHash: senhaPadrao,
-      papel: Papel.DIRETOR_EDUCACIONAL,
-    }),
-  );
+  // Diretores Educacionais reais — o Superintendente pode designar mais de um
+  // Diretor responsável por uma mesma solicitação (HU04), cada um
+  // encaminhando os itens do time dele; por isso são vários usuários aqui.
+  // `departamento` é só informativo (exibido em Gerenciar Usuários) — a
+  // maioria ainda não foi desenhada/atribuída a um departamento específico.
+  const diretoresEducacionaisDefinicao = [
+    { nome: 'Leonnardo Furquin', departamento: 'Ação/Atividade' },
+    { nome: 'Marcelo José da Silva Pires', departamento: 'Ainda não desenhado para o departamento' },
+    { nome: 'Flavio Henrique Silva', departamento: 'Ainda não desenhado para o departamento' },
+    { nome: 'Viviane Maria de Oliveira Arruda', departamento: 'Ainda não desenhado para o departamento' },
+    { nome: 'Pedro Henrique Lemes Camilo', departamento: 'Ainda não desenhado para o departamento' },
+    { nome: 'Michelly Mancinelli Gonçalves', departamento: 'Ainda não desenhado para o departamento' },
+  ];
+
+  const diretoresEducacionais: Usuario[] = [];
+  for (const def of diretoresEducacionaisDefinicao) {
+    const diretor = await usuarioRepo.save(
+      usuarioRepo.create({
+        nome: def.nome,
+        email: `${slug(def.nome)}@senar-go.com.br`,
+        senhaHash: senhaPadrao,
+        papel: Papel.DIRETOR_EDUCACIONAL,
+        departamento: def.departamento,
+      }),
+    );
+    usuariosPorNome.set(def.nome, diretor);
+    diretoresEducacionais.push(diretor);
+  }
+  const diretorEducacional = diretoresEducacionais[0];
+  const diretorEducacional2 = diretoresEducacionais[1];
   await usuarioRepo.save(
     usuarioRepo.create({
       nome: 'Administrador',
